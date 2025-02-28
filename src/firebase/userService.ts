@@ -66,7 +66,11 @@ export async function updateUserLastLogin(uid: string): Promise<void> {
     await updateDoc(userRef, {
       lastLogin: serverTimestamp()
     });
-    console.log('Date de dernière connexion mise à jour');
+    
+    // Logger uniquement en développement si activé
+    if (import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === "true") {
+      console.log('Date de dernière connexion mise à jour');
+    }
   } catch (error) {
     console.error('Erreur lors de la mise à jour de la date de dernière connexion:', error);
     // Ne pas propager l'erreur car ce n'est pas critique

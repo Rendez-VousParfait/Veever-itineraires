@@ -9,25 +9,25 @@ import { getStorage } from 'firebase/storage';
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyAxEUHKgAoGNSaHYIQOzzTxVuoD4ZPTz0k",
-  authDomain: "rendez-vous-parfait-ca3a6.firebaseapp.com",
-  projectId: "rendez-vous-parfait-ca3a6",
-  storageBucket: "rendez-vous-parfait-ca3a6.appspot.com",
-  messagingSenderId: "247528274248",
-  appId: "1:247528274248:web:7c92f4255bec86c66bdb7d",
-  measurementId: "G-7K6FQEMEQW"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialiser Firebase avec journalisation
-console.log('Initialisation de Firebase avec la configuration:', JSON.stringify(firebaseConfig, null, 2));
+// En mode développement uniquement, ajouter un log minimal sans exposer les détails
+if (import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === "true") {
+  console.log('Firebase initialisé en mode développement');
+}
+
+// Initialiser Firebase
 const app = initializeApp(firebaseConfig);
-console.log('Firebase initialisé avec succès');
 
 // Exporter les services Firebase
 export const auth = getAuth(app);
-console.log('Service d\'authentification Firebase initialisé');
 export const db = getFirestore(app);
-console.log('Service Firestore initialisé');
 export const storage = getStorage(app);
-console.log('Service Storage initialisé');
 export default app;

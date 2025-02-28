@@ -239,9 +239,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Effet pour surveiller l'état de l'authentification
   useEffect(() => {
-    console.log('AuthContext: Configuration de l\'écouteur d\'authentification');
+    // Logger uniquement en développement si activé
+    if (import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === "true") {
+      console.log('Surveillance de l\'état d\'authentification activée');
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('AuthContext: État d\'authentification changé:', user ? `Utilisateur connecté: ${user.email}` : 'Aucun utilisateur');
+      // Log minimal sans exposer les détails de l'utilisateur
+      if (import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === "true") {
+        console.log('État d\'authentification changé:', user ? 'Utilisateur connecté' : 'Aucun utilisateur');
+      }
+      
       setCurrentUser(user);
       
       if (user) {
