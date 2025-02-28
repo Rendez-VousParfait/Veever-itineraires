@@ -7,10 +7,20 @@ import {
   IconButton,
   Box,
   Button,
-  Divider
+  Divider,
+  ListItemIcon
 } from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+import { 
+  Close as CloseIcon,
+  AccountCircle as AccountIcon,
+  AdminPanelSettings as AdminIcon,
+  Favorite as FavoriteIcon,
+  ShoppingBag as ShoppingBagIcon,
+  Star as StarIcon
+} from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { useProfileTab } from '../contexts/ProfileTabContext';
+import { useNavigate } from 'react-router-dom';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -19,7 +29,9 @@ interface MobileMenuProps {
 }
 
 const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onOpenAuth }) => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, isAdmin } = useAuth();
+  const { setActiveTab } = useProfileTab();
+  const navigate = useNavigate();
   
   const menuItems = [
     { text: 'Itinéraires', href: '/#itineraires' },
@@ -36,6 +48,32 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onOpenAuth }) 
     } catch (error) {
       console.error("Erreur lors de la déconnexion", error);
     }
+  };
+
+  const handleProfile = () => {
+    setActiveTab(0); // Onglet Profil
+    navigate('/profile');
+    onClose();
+  };
+
+  const handleAdminPanel = () => {
+    navigate('/admin/users');
+    onClose();
+  };
+
+  const handleFavorites = () => {
+    navigate('/favorites');
+    onClose();
+  };
+
+  const handleOrders = () => {
+    navigate('/orders');
+    onClose();
+  };
+
+  const handleCustomExperiences = () => {
+    navigate('/experiences');
+    onClose();
   };
 
   return (
@@ -105,6 +143,116 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onOpenAuth }) 
                 }}
               />
             </ListItem>
+            
+            <List>
+              <ListItem 
+                button 
+                onClick={handleProfile}
+                sx={{ 
+                  py: 1,
+                  '&:hover': {
+                    background: 'rgba(99, 102, 241, 0.1)',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: 'text.primary' }}>
+                  <AccountIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Mon profil" 
+                  sx={{
+                    '& .MuiTypography-root': { color: 'text.primary' },
+                  }}
+                />
+              </ListItem>
+              
+              {isAdmin && (
+                <ListItem 
+                  button 
+                  onClick={handleAdminPanel}
+                  sx={{ 
+                    py: 1,
+                    '&:hover': {
+                      background: 'rgba(99, 102, 241, 0.1)',
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 40, color: 'text.primary' }}>
+                    <AdminIcon />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="Administration" 
+                    sx={{
+                      '& .MuiTypography-root': { color: 'text.primary' },
+                    }}
+                  />
+                </ListItem>
+              )}
+              
+              <ListItem 
+                button 
+                onClick={handleFavorites}
+                sx={{ 
+                  py: 1,
+                  '&:hover': {
+                    background: 'rgba(99, 102, 241, 0.1)',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: 'text.primary' }}>
+                  <FavoriteIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Mes favoris" 
+                  sx={{
+                    '& .MuiTypography-root': { color: 'text.primary' },
+                  }}
+                />
+              </ListItem>
+              
+              <ListItem 
+                button 
+                onClick={handleOrders}
+                sx={{ 
+                  py: 1,
+                  '&:hover': {
+                    background: 'rgba(99, 102, 241, 0.1)',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: 'text.primary' }}>
+                  <ShoppingBagIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Mes commandes" 
+                  sx={{
+                    '& .MuiTypography-root': { color: 'text.primary' },
+                  }}
+                />
+              </ListItem>
+              
+              <ListItem 
+                button 
+                onClick={handleCustomExperiences}
+                sx={{ 
+                  py: 1,
+                  '&:hover': {
+                    background: 'rgba(99, 102, 241, 0.1)',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: 'text.primary' }}>
+                  <StarIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Mes expériences" 
+                  sx={{
+                    '& .MuiTypography-root': { color: 'text.primary' },
+                  }}
+                />
+              </ListItem>
+            </List>
+            
             <Button
               fullWidth
               variant="outlined"

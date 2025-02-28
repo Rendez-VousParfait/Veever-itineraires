@@ -21,6 +21,7 @@ import EscapadesRomantiques from './components/blog/EscapadesRomantiques'
 import PersonalityForm from './components/PersonalityForm'
 import SurpriseMe from './components/SurpriseMe'
 import { AuthProvider } from './contexts/AuthContext'
+import { ProfileTabProvider } from './contexts/ProfileTabContext'
 import AuthModal from './components/auth/AuthModal'
 import UserMenu from './components/auth/UserMenu'
 import { useAuth } from './contexts/AuthContext'
@@ -29,6 +30,9 @@ import UserManagement from './components/admin/UserManagement'
 import CreateAdminUser from './components/admin/CreateAdminUser'
 import { ProtectedRoute } from './utils/authUtils'
 import UserProfile from './components/auth/UserProfile'
+import UserFavoritesPage from './components/auth/UserFavoritesPage'
+import UserOrdersPage from './components/auth/UserOrdersPage'
+import UserCustomExperiencesPage from './components/auth/UserCustomExperiencesPage'
 
 // Composant pour la page d'accueil
 const HomePage = () => (
@@ -206,38 +210,55 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <Router>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/booking/:id" element={<BookingPageWrapper />} />
-              <Route path="/blog/top-5-insolite" element={<TopInsolite />} />
-              <Route path="/blog/meilleurs-rooftops" element={<MeilleursRooftops />} />
-              <Route path="/blog/guide-spas" element={<GuideSpa />} />
-              <Route path="/blog/escapades-romantiques" element={<EscapadesRomantiques />} />
-              <Route path="/debug-auth" element={<DebugAuth />} />
-              
-              {/* Route protégée pour le profil utilisateur */}
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <UserProfile />
-                </ProtectedRoute>
-              } />
-              
-              {/* Routes protégées pour l'administration */}
-              <Route path="/admin/users" element={
-                <ProtectedRoute requireAdmin>
-                  <UserManagement />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/create-admin" element={
-                <ProtectedRoute requireAdmin>
-                  <CreateAdminUser />
-                </ProtectedRoute>
-              } />
-            </Routes>
-          </Layout>
-        </Router>
+        <ProfileTabProvider>
+          <Router>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/booking/:id" element={<BookingPageWrapper />} />
+                <Route path="/blog/top-5-insolite" element={<TopInsolite />} />
+                <Route path="/blog/meilleurs-rooftops" element={<MeilleursRooftops />} />
+                <Route path="/blog/guide-spas" element={<GuideSpa />} />
+                <Route path="/blog/escapades-romantiques" element={<EscapadesRomantiques />} />
+                <Route path="/debug-auth" element={<DebugAuth />} />
+                
+                {/* Routes protégées pour l'utilisateur */}
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <UserProfile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/favorites" element={
+                  <ProtectedRoute>
+                    <UserFavoritesPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/orders" element={
+                  <ProtectedRoute>
+                    <UserOrdersPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/experiences" element={
+                  <ProtectedRoute>
+                    <UserCustomExperiencesPage />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Routes protégées pour l'administration */}
+                <Route path="/admin/users" element={
+                  <ProtectedRoute requireAdmin>
+                    <UserManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/create-admin" element={
+                  <ProtectedRoute requireAdmin>
+                    <CreateAdminUser />
+                  </ProtectedRoute>
+                } />
+              </Routes>
+            </Layout>
+          </Router>
+        </ProfileTabProvider>
       </AuthProvider>
     </ThemeProvider>
   );

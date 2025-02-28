@@ -40,6 +40,8 @@ import {
 import ItineraryModal from './ItineraryModal';
 import PrestationModal, { Prestation } from './PrestationModal';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { addToFavorites, removeFromFavorites, isItineraryFavorite } from '../firebase/itineraryService';
 
 export type ItineraryType = 'couples' | 'groups';
 
@@ -636,6 +638,8 @@ const Itineraries: React.FC = () => {
   const navigate = useNavigate();
   const [faviconPosition, setFaviconPosition] = useState({ x: -500, y: -600 });
   const sectionRef = useRef<HTMLDivElement>(null);
+  const { currentUser } = useAuth();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const filteredItineraries = selectedType === 'all' 
     ? itineraries 
@@ -645,6 +649,92 @@ const Itineraries: React.FC = () => {
     const itinerary = itineraries.find(item => item.id === id);
     if (itinerary) {
       setSelectedItinerary(itinerary);
+    }
+  };
+
+  // Charger les favoris depuis Firebase au chargement du composant
+  useEffect(() => {
+    const loadFavorites = async () => {
+      if (currentUser) {
+        setIsLoading(true);
+        try {
+          // Vérifier chaque itinéraire
+          const favIds: number[] = [];
+          
+          for (const itinerary of itineraries) {
+            const isFavorite = await isItineraryFavorite(currentUser.uid, itinerary.id);
+            if (isFavorite) {
+              favIds.push(itinerary.id);
+            }
+          }
+          
+          setFavorites(favIds);
+        } catch (error) {
+          console.error('Erreur lors du chargement des favoris:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        // Si l'utilisateur n'est pas connecté, charger depuis localStorage
+        const storedFavorites = localStorage.getItem('favorites');
+        if (storedFavorites) {
+          setFavorites(JSON.parse(storedFavorites));
+        }
+      }
+    };
+    
+    loadFavorites();
+  }, [currentUser]);
+
+  // Gérer l'ajout/suppression des favoris
+  const handleToggleFavorite = async (itineraryId: number) => {
+    try {
+      if (!currentUser) {
+        // Si l'utilisateur n'est pas connecté, utiliser localStorage
+        const newFavorites = favorites.includes(itineraryId)
+          ? favorites.filter(id => id !== itineraryId)
+          : [...favorites, itineraryId];
+        
+        setFavorites(newFavorites);
+        localStorage.setItem('favorites', JSON.stringify(newFavorites));
+        return;
+      }
+      
+      const itinerary = itineraries.find(item => item.id === itineraryId);
+      if (!itinerary) return;
+      
+      if (favorites.includes(itineraryId)) {
+        // Supprimer des favoris
+        await removeFromFavorites(currentUser.uid, itineraryId);
+        setFavorites(favorites.filter(id => id !== itineraryId));
+        
+        // Jouer un son de suppression
+        const audio = new Audio('/sounds/skip.mp3');
+        audio.volume = 0.5;
+        audio.play();
+      } else {
+        // Ajouter aux favoris
+        await addToFavorites(
+          currentUser.uid, 
+          itineraryId, 
+          itinerary.title, 
+          itinerary.image,
+          itinerary.description,
+          itinerary.price,
+          itinerary.duration,
+          itinerary.groupSize,
+          itinerary.type,
+          itinerary.tags
+        );
+        setFavorites([...favorites, itineraryId]);
+        
+        // Jouer un son d'ajout
+        const audio = new Audio('/sounds/like.mp3');
+        audio.volume = 0.5;
+        audio.play();
+      }
+    } catch (error) {
+      console.error('Erreur lors de la gestion des favoris:', error);
     }
   };
 
@@ -1132,13 +1222,11 @@ const Itineraries: React.FC = () => {
                     {/* Bouton favoris */}
                     <Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 2 }}>
                       <IconButton
-                        onClick={() => {
-                          const newFavorites = favorites.includes(itinerary.id)
-                            ? favorites.filter(id => id !== itinerary.id)
-                            : [...favorites, itinerary.id];
-                          setFavorites(newFavorites);
-                          localStorage.setItem('favorites', JSON.stringify(newFavorites));
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleFavorite(itinerary.id);
                         }}
+                        disabled={isLoading}
                         sx={{
                           bgcolor: 'rgba(0,0,0,0.5)',
                           '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },

@@ -27,13 +27,20 @@ import {
   Delete as DeleteIcon,
   Lock as LockIcon,
   Email as EmailIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  Favorite,
+  ShoppingBag,
+  Star
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import { useProfileTab } from '../../contexts/ProfileTabContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import UserFavorites from './UserFavorites';
+import UserOrders from './UserOrders';
+import UserCustomExperiences from './UserCustomExperiences';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -72,8 +79,8 @@ const UserProfile: React.FC = () => {
     resetPassword
   } = useAuth();
   
-  // État pour les onglets
-  const [tabValue, setTabValue] = useState(0);
+  // Utiliser le contexte pour l'onglet actif
+  const { activeTab, setActiveTab } = useProfileTab();
   
   // États pour les informations de profil
   const [displayName, setDisplayName] = useState<string>('');
@@ -107,7 +114,7 @@ const UserProfile: React.FC = () => {
   
   // Gérer le changement d'onglet
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
+    setActiveTab(newValue);
   };
   
   // Gérer la soumission du formulaire de profil
@@ -476,10 +483,11 @@ const UserProfile: React.FC = () => {
           <Paper sx={{ width: '100%' }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
               <Tabs 
-                value={tabValue} 
+                value={activeTab} 
                 onChange={handleTabChange} 
                 aria-label="profile tabs"
-                variant="fullWidth"
+                variant="scrollable"
+                scrollButtons="auto"
               >
                 <Tab icon={<PersonIcon />} label="Profil" id="profile-tab-0" aria-controls="profile-tabpanel-0" />
                 <Tab icon={<LockIcon />} label="Mot de passe" id="profile-tab-1" aria-controls="profile-tabpanel-1" />
@@ -488,7 +496,7 @@ const UserProfile: React.FC = () => {
             </Box>
             
             {/* Onglet Profil */}
-            <TabPanel value={tabValue} index={0}>
+            <TabPanel value={activeTab} index={0}>
               {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {error}
@@ -527,7 +535,7 @@ const UserProfile: React.FC = () => {
             </TabPanel>
             
             {/* Onglet Mot de passe */}
-            <TabPanel value={tabValue} index={1}>
+            <TabPanel value={activeTab} index={1}>
               {passwordError && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {passwordError}
@@ -606,7 +614,7 @@ const UserProfile: React.FC = () => {
             </TabPanel>
             
             {/* Onglet Email */}
-            <TabPanel value={tabValue} index={2}>
+            <TabPanel value={activeTab} index={2}>
               <Alert severity="info" sx={{ mb: 3 }}>
                 Pour des raisons de sécurité, le changement d'adresse email nécessite une vérification. 
                 Veuillez contacter l'administrateur pour modifier votre adresse email.

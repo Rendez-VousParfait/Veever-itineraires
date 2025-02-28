@@ -16,13 +16,18 @@ import {
   Logout as LogoutIcon,
   AccountCircle as AccountIcon,
   Settings as SettingsIcon,
-  AdminPanelSettings as AdminIcon
+  AdminPanelSettings as AdminIcon,
+  Favorite as FavoriteIcon,
+  ShoppingBag as ShoppingBagIcon,
+  Star as StarIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import { useProfileTab } from '../../contexts/ProfileTabContext';
 
 const UserMenu: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { currentUser, logout, isAdmin } = useAuth();
+  const { setActiveTab } = useProfileTab();
   const navigate = useNavigate();
   
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -49,8 +54,24 @@ const UserMenu: React.FC = () => {
   };
 
   const handleProfile = () => {
+    setActiveTab(0); // Onglet Profil
     handleClose();
     navigate('/profile');
+  };
+  
+  const handleFavorites = () => {
+    handleClose();
+    navigate('/favorites');
+  };
+  
+  const handleOrders = () => {
+    handleClose();
+    navigate('/orders');
+  };
+  
+  const handleCustomExperiences = () => {
+    handleClose();
+    navigate('/experiences');
   };
   
   // Obtenir les initiales de l'utilisateur pour l'avatar
@@ -157,6 +178,29 @@ const UserMenu: React.FC = () => {
             <ListItemText>Administration</ListItemText>
           </MenuItem>
         )}
+        
+        <MenuItem onClick={handleFavorites}>
+          <ListItemIcon>
+            <FavoriteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Mes favoris</ListItemText>
+        </MenuItem>
+        
+        <MenuItem onClick={handleOrders}>
+          <ListItemIcon>
+            <ShoppingBagIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Mes commandes</ListItemText>
+        </MenuItem>
+        
+        <MenuItem onClick={handleCustomExperiences}>
+          <ListItemIcon>
+            <StarIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Mes expériences</ListItemText>
+        </MenuItem>
+        
+        <Divider />
         
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
