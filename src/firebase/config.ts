@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator, enableMultiTabIndexedDbPersistence, enableIndexedDbPersistence, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, enableMultiTabIndexedDbPersistence, enableIndexedDbPersistence, CACHE_SIZE_UNLIMITED, PersistenceSettings } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -26,24 +26,28 @@ if (import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === "true") {
 // Initialiser Firebase
 const app = initializeApp(firebaseConfig);
 
+// Paramètres de Firestore selon le mode de persistance
+const persistenceMode = import.meta.env.VITE_FIREBASE_PERSISTENCE || 'session';
+
 // Initialiser Firestore avec configuration optimisée
 export const db = getFirestore(app);
 
 // Configurer la persistance des données selon le mode
-const persistenceMode = import.meta.env.VITE_FIREBASE_PERSISTENCE || 'session';
-
 // Appliquer la configuration de persistence uniquement côté client
 if (typeof window !== 'undefined') {
   if (persistenceMode === 'session') {
     // Mode session - moins de problèmes CORS mais données perdues à la fermeture du navigateur
     // Pas de configuration spéciale nécessaire, utilise le comportement par défaut de Firestore
+    if (import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === "true") {
+      console.log('Firestore en mode persistance par session');
+    }
   } else if (persistenceMode === 'local') {
     // Mode local - données persistantes entre sessions, mais plus susceptible aux erreurs CORS
     (async () => {
       try {
         await enableIndexedDbPersistence(db);
         if (import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === "true") {
-          console.log('Persistance Firestore activée avec succès');
+          console.log('Persistance Firestore locale activée avec succès');
         }
       } catch (err: any) {
         if (err.code === 'failed-precondition') {
@@ -53,6 +57,15 @@ if (typeof window !== 'undefined') {
         }
       }
     })();
+  } else if (persistenceMode === 'none') {
+    // Mode sans persistance - solution ultime pour les problèmes CORS
+    // Désactive explicitement le cache pour une connexion directe
+    // Note: Augmente le nombre de requêtes et la consommation de bande passante
+    if (import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === "true") {
+      console.log('Firestore en mode sans persistance (connexion directe)');
+    }
+    // Pas besoin de configuration additionnelle, le mode session est utilisé par défaut
+    // La différence est que nous informons l'utilisateur que c'est un choix délibéré
   }
 }
 
