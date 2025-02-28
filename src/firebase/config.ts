@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, enableMultiTabIndexedDbPersistence, enableIndexedDbPersistence, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -26,8 +26,37 @@ if (import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === "true") {
 // Initialiser Firebase
 const app = initializeApp(firebaseConfig);
 
+// Initialiser Firestore avec configuration optimisée
+export const db = getFirestore(app);
+
+// Configurer la persistance des données selon le mode
+const persistenceMode = import.meta.env.VITE_FIREBASE_PERSISTENCE || 'session';
+
+// Appliquer la configuration de persistence uniquement côté client
+if (typeof window !== 'undefined') {
+  if (persistenceMode === 'session') {
+    // Mode session - moins de problèmes CORS mais données perdues à la fermeture du navigateur
+    // Pas de configuration spéciale nécessaire, utilise le comportement par défaut de Firestore
+  } else if (persistenceMode === 'local') {
+    // Mode local - données persistantes entre sessions, mais plus susceptible aux erreurs CORS
+    (async () => {
+      try {
+        await enableIndexedDbPersistence(db);
+        if (import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === "true") {
+          console.log('Persistance Firestore activée avec succès');
+        }
+      } catch (err: any) {
+        if (err.code === 'failed-precondition') {
+          console.warn('Persistance Firestore impossible: plusieurs onglets ouverts à la fois');
+        } else if (err.code === 'unimplemented') {
+          console.warn('Le navigateur ne supporte pas la persistance IndexedDB');
+        }
+      }
+    })();
+  }
+}
+
 // Exporter les services Firebase
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 export const storage = getStorage(app);
 export default app;

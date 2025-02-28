@@ -33,6 +33,7 @@ import UserProfile from './components/auth/UserProfile'
 import UserFavoritesPage from './components/auth/UserFavoritesPage'
 import UserOrdersPage from './components/auth/UserOrdersPage'
 import UserCustomExperiencesPage from './components/auth/UserCustomExperiencesPage'
+import FirebaseErrorHandler from './components/FirebaseErrorHandler'
 
 // Composant pour la page d'accueil
 const HomePage = () => (
@@ -260,6 +261,9 @@ function App() {
           </Router>
         </ProfileTabProvider>
       </AuthProvider>
+      
+      {/* Gestionnaire d'erreurs Firebase */}
+      <FirebaseErrorHandler />
     </ThemeProvider>
   );
 }
