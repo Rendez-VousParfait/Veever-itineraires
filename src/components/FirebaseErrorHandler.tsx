@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Alert, Snackbar, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../firebase/config';
@@ -86,7 +86,18 @@ const FirebaseErrorHandler: React.FC = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [originalFetch, setOriginalFetch] = useState<typeof window.fetch | null>(null);
 
+  // Déplacer la logique de gestion des erreurs dans un useCallback
+  const handleError = useCallback((errorType: string, errorMessage: string) => {
+    setError({
+      type: errorType,
+      message: errorMessage
+    });
+    setShowDialog(true);
+  }, []);
+
   useEffect(() => {
+    if (originalFetch) return; // Éviter les réexécutions si originalFetch existe déjà
+
     // Détecter les erreurs CORS et stocker la fonction fetch originale
     const origFetch = detectCorsErrors();
     setOriginalFetch(origFetch);
@@ -96,16 +107,15 @@ const FirebaseErrorHandler: React.FC = () => {
       const errorMessage = event.detail?.message || 'Erreur CORS inconnue';
       const isAccessControlError = errorMessage.includes('access control checks');
       
-      setError({
-        type: isAccessControlError ? 'access control checks' : 'cors',
-        message: `Problème de connexion au serveur Firebase: ${errorMessage}`
-      });
-      setShowDialog(true);
+      handleError(
+        isAccessControlError ? 'access control checks' : 'cors',
+        `Problème de connexion au serveur Firebase: ${errorMessage}`
+      );
     };
     
     // Écouter les changements d'état d'authentification pour détecter les erreurs
     const unsubscribe = onAuthStateChanged(auth, 
-      (user) => {
+      () => {
         // Utilisateur connecté avec succès, rien à faire
       }, 
       (firebaseError: FirebaseError) => {
@@ -115,15 +125,9 @@ const FirebaseErrorHandler: React.FC = () => {
           errorType = firebaseError.code;
         }
         
-        setError({
-          type: errorType,
-          message: firebaseError.message
-        });
-        setShowDialog(true);
+        handleError(errorType, firebaseError.message);
       }
     );
-    
-    window.addEventListener('firebaseCorsError', corsErrorHandler);
     
     // Écouter les erreurs non interceptées
     const unhandledErrorHandler = (event: ErrorEvent) => {
@@ -134,14 +138,14 @@ const FirebaseErrorHandler: React.FC = () => {
       )) {
         const isAccessControlError = event.message.includes('access control checks');
         
-        setError({
-          type: isAccessControlError ? 'access control checks' : 'cors',
-          message: event.message
-        });
-        setShowDialog(true);
+        handleError(
+          isAccessControlError ? 'access control checks' : 'cors',
+          event.message
+        );
       }
     };
     
+    window.addEventListener('firebaseCorsError', corsErrorHandler);
     window.addEventListener('error', unhandledErrorHandler);
     
     return () => {
@@ -154,7 +158,7 @@ const FirebaseErrorHandler: React.FC = () => {
         window.fetch = originalFetch;
       }
     };
-  }, [originalFetch]);
+  }, [originalFetch, handleError]); // Ajouter handleError aux dépendances
   
   const handleClose = () => {
     setShowDialog(false);
