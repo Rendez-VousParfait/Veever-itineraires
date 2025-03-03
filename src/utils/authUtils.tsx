@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Alert, Box, CircularProgress, Container, Typography } from '@mui/material';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
   requireAdmin?: boolean;
 }
 
@@ -12,49 +12,56 @@ interface ProtectedRouteProps {
  * Composant pour protéger les routes qui nécessitent une authentification
  * et/ou des droits d'administrateur
  */
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  requireAdmin = false 
-}) => {
+export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { currentUser, loading, isAdmin } = useAuth();
   const location = useLocation();
 
-  // Afficher un indicateur de chargement pendant la vérification de l'authentification
+  console.log('ProtectedRoute - État:', {
+    currentUser: currentUser?.email,
+    loading,
+    isAdmin,
+    requireAdmin,
+    pathname: location.pathname
+  });
+
   if (loading) {
     return (
-      <Container maxWidth="sm" sx={{ mt: 10, textAlign: 'center' }}>
-        <CircularProgress size={60} />
-        <Typography variant="h6" sx={{ mt: 2 }}>
-          Vérification de l'authentification...
-        </Typography>
-      </Container>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        <CircularProgress />
+      </div>
     );
   }
 
-  // Si l'utilisateur n'est pas connecté, rediriger vers la page d'accueil
   if (!currentUser) {
+    console.log('ProtectedRoute - Utilisateur non connecté, redirection...');
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Si la route nécessite des droits d'administrateur et que l'utilisateur n'est pas admin
   if (requireAdmin && !isAdmin) {
+    console.log('ProtectedRoute - Accès admin refusé');
     return (
-      <Container maxWidth="md" sx={{ mt: 10 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          Accès refusé. Cette page est réservée aux administrateurs.
-        </Alert>
-        <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <Typography variant="body1">
-            Vous n'avez pas les droits nécessaires pour accéder à cette page.
-          </Typography>
-        </Box>
-      </Container>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '1rem'
+      }}>
+        <h2>Accès non autorisé</h2>
+        <p>Vous n'avez pas les droits d'administrateur nécessaires pour accéder à cette page.</p>
+      </div>
     );
   }
 
-  // Si tout est OK, afficher le contenu de la route
+  console.log('ProtectedRoute - Accès autorisé');
   return <>{children}</>;
-};
+}
 
 /**
  * Vérifie si l'utilisateur est administrateur

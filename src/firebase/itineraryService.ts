@@ -15,12 +15,15 @@ import {
   limit
 } from 'firebase/firestore';
 import { db } from './config';
-import { Itinerary } from '../components/Itineraries';
+import { Itinerary } from '../types/itinerary';
 
 // Collections Firestore
 const ORDERS_COLLECTION = 'orders';
 const CUSTOM_EXPERIENCES_COLLECTION = 'customExperiences';
 const FAVORITES_COLLECTION = 'favorites';
+
+// Collection Firestore pour les itinéraires
+const ITINERARIES_COLLECTION = 'itineraries';
 
 // Interface pour les commandes d'itinéraires
 export interface Order {
@@ -371,4 +374,221 @@ export async function getRecentFavorites(userId: string, limitCount: number = 5)
     console.error('Erreur lors de la récupération des favoris récents:', error);
     throw error;
   }
-} 
+}
+
+/**
+ * Récupère tous les itinéraires
+ */
+export async function getAllItineraries(): Promise<Itinerary[]> {
+  console.log('getAllItineraries - Début de la récupération');
+  try {
+    const itinerariesRef = collection(db, ITINERARIES_COLLECTION);
+    console.log('getAllItineraries - Collection référencée:', ITINERARIES_COLLECTION);
+    
+    const querySnapshot = await getDocs(itinerariesRef);
+    console.log('getAllItineraries - Nombre de documents:', querySnapshot.size);
+    
+    const itineraries: Itinerary[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      console.log('getAllItineraries - Document trouvé:', doc.id, data);
+      
+      // Convertir les Timestamps en Dates
+      const displayStartDate = data.displayStartDate?.toDate() || null;
+      const displayEndDate = data.displayEndDate?.toDate() || null;
+      
+      itineraries.push({
+        ...data,
+        id: parseInt(doc.id),
+        displayStartDate,
+        displayEndDate
+      } as Itinerary);
+    });
+    
+    console.log('getAllItineraries - Itinéraires récupérés:', itineraries);
+    return itineraries;
+  } catch (error) {
+    console.error('getAllItineraries - Erreur:', error);
+    throw error;
+  }
+}
+
+/**
+ * Récupère un itinéraire par son ID
+ */
+export const getItineraryById = async (itineraryId: string): Promise<Itinerary> => {
+  try {
+    const itineraryRef = doc(db, ITINERARIES_COLLECTION, itineraryId);
+    const itineraryDoc = await getDoc(itineraryRef);
+    
+    if (!itineraryDoc.exists()) {
+      throw new Error('Itinéraire non trouvé');
+    }
+    
+    const itineraryData = itineraryDoc.data();
+    return {
+      id: itineraryDoc.id,
+      ...itineraryData
+    } as Itinerary;
+  } catch (error) {
+    console.error('Erreur lors de la récupération de l\'itinéraire:', error);
+    throw error;
+  }
+};
+
+/**
+ * Crée un nouvel itinéraire
+ */
+export async function createItinerary(itinerary: Omit<Itinerary, 'id'>): Promise<number> {
+  try {
+    // Générer un nouvel ID
+    const itinerariesRef = collection(db, ITINERARIES_COLLECTION);
+    const querySnapshot = await getDocs(itinerariesRef);
+    const existingIds = querySnapshot.docs.map(doc => parseInt(doc.id));
+    const newId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+    
+    // Créer l'itinéraire avec le nouvel ID
+    await setDoc(doc(db, ITINERARIES_COLLECTION, newId.toString()), {
+      ...itinerary,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('Itinéraire créé avec succès, ID:', newId);
+    return newId;
+  } catch (error) {
+    console.error('Erreur lors de la création de l\'itinéraire:', error);
+    throw error;
+  }
+}
+
+/**
+ * Met à jour un itinéraire existant
+ */
+export async function updateItinerary(itineraryId: number, itineraryData: Partial<Itinerary>): Promise<void> {
+  try {
+    const docRef = doc(db, ITINERARIES_COLLECTION, itineraryId.toString());
+    
+    // Vérifier si l'itinéraire existe
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      throw new Error('Itinéraire non trouvé');
+    }
+    
+    // Mettre à jour l'itinéraire
+    await updateDoc(docRef, {
+      ...itineraryData,
+      updatedAt: serverTimestamp()
+    });
+    console.log('Itinéraire mis à jour avec succès');
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de l\'itinéraire:', error);
+    throw error;
+  }
+}
+
+/**
+ * Supprime un itinéraire
+ */
+export async function deleteItinerary(itineraryId: number): Promise<void> {
+  try {
+    const docRef = doc(db, ITINERARIES_COLLECTION, itineraryId.toString());
+    
+    // Vérifier si l'itinéraire existe
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      throw new Error('Itinéraire non trouvé');
+    }
+    
+    // Supprimer l'itinéraire
+    await deleteDoc(docRef);
+    console.log('Itinéraire supprimé avec succès');
+  } catch (error) {
+    console.error('Erreur lors de la suppression de l\'itinéraire:', error);
+    throw error;
+  }
+}
+
+/**
+ * Met à jour les paramètres d'affichage d'un itinéraire
+ */
+export async function updateItineraryDisplay(
+  itineraryId: number, 
+  displayOnHome: boolean,
+  displayStartDate?: Date | null,
+  displayEndDate?: Date | null
+): Promise<void> {
+  try {
+    const docRef = doc(db, ITINERARIES_COLLECTION, itineraryId.toString());
+    const updateData: any = {
+      displayOnHome,
+      updatedAt: serverTimestamp()
+    };
+
+    // Convertir les dates en Timestamps seulement si elles sont définies
+    if (displayStartDate instanceof Date) {
+      updateData.displayStartDate = Timestamp.fromDate(displayStartDate);
+    }
+    if (displayEndDate instanceof Date) {
+      updateData.displayEndDate = Timestamp.fromDate(displayEndDate);
+    }
+
+    await updateDoc(docRef, updateData);
+    console.log(`Paramètres d'affichage de l'itinéraire ${itineraryId} mis à jour:`, updateData);
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour des paramètres d\'affichage:', error);
+    throw error;
+  }
+}
+
+/**
+ * Récupère les itinéraires à afficher sur la page d'accueil
+ */
+export async function getHomeItineraries(): Promise<Itinerary[]> {
+  try {
+    const itinerariesRef = collection(db, ITINERARIES_COLLECTION);
+    const now = new Date();
+    
+    // Récupérer tous les itinéraires avec displayOnHome = true
+    const q = query(
+      itinerariesRef,
+      where("displayOnHome", "==", true)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const itineraries: Itinerary[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      
+      // Convertir les Timestamps en Dates si ils existent
+      const displayStartDate = data.displayStartDate ? data.displayStartDate.toDate() : null;
+      const displayEndDate = data.displayEndDate ? data.displayEndDate.toDate() : null;
+      
+      // Vérifier si l'itinéraire doit être affiché selon les dates
+      const isWithinDateRange = (
+        // Si pas de date de début OU si la date actuelle est après la date de début
+        (!displayStartDate || now >= displayStartDate) &&
+        // ET si pas de date de fin OU si la date actuelle est avant la date de fin
+        (!displayEndDate || now <= displayEndDate)
+      );
+      
+      // N'ajouter l'itinéraire que s'il est dans la plage de dates
+      if (isWithinDateRange) {
+        itineraries.push({
+          ...data,
+          id: parseInt(doc.id),
+          displayStartDate,
+          displayEndDate
+        } as Itinerary);
+      }
+    });
+    
+    // Trier les itinéraires par type
+    return itineraries.sort((a, b) => a.type.localeCompare(b.type));
+  } catch (error) {
+    console.error('Erreur lors de la récupération des itinéraires de la page d\'accueil:', error);
+    throw error;
+  }
+}

@@ -17,6 +17,8 @@ import {
   Dialog,
   DialogContent,
   DialogActions,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -41,7 +43,7 @@ import ItineraryModal from './ItineraryModal';
 import PrestationModal, { Prestation } from './PrestationModal';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { addToFavorites, removeFromFavorites, isItineraryFavorite } from '../firebase/itineraryService';
+import { addToFavorites, removeFromFavorites, isItineraryFavorite, getHomeItineraries } from '../firebase/itineraryService';
 
 export type ItineraryType = 'couples' | 'groups';
 
@@ -83,541 +85,9 @@ export interface Itinerary {
   images?: string[];
   tags: string[];
   date: string;
+  displayStartDate?: string;
+  displayEndDate?: string;
 }
-
-const itineraries: Itinerary[] = [
-  {
-    id: 1,
-    type: 'couples',
-    title: 'Escapade Romantique',
-    description: 'Une journée magique en amoureux.',
-    image: 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?q=80&w=1200&auto=format&fit=crop',
-    steps: [
-      {
-        type: 'hotel',
-        name: 'Hôtel Le Royal',
-        description: 'Suite avec vue panoramique',
-        icon: <Hotel />,
-        details: {
-          title: 'Suite Deluxe Vue Panoramique',
-          description: 'Profitez d\'une vue imprenable sur la ville depuis votre suite luxueuse de 45m². La chambre dispose d\'un lit king-size, d\'une salle de bain en marbre avec baignoire et douche à l\'italienne, et d\'un salon privé.',
-          images: [
-            'https://images.unsplash.com/photo-1618773928121-c33d57733427?q=80&w=1200',
-            'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1200',
-            'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?q=80&w=1200',
-            'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=1200',
-          ],
-          adresse: '15 Place Bellecour, 69002 Lyon',
-          prix: '350€ / nuit',
-          equipements: [
-            'Lit King-size',
-            'Climatisation',
-            'Wi-Fi gratuit',
-            'Mini-bar',
-            'Coffre-fort',
-            'Room service 24/7',
-            'Baignoire balnéo',
-            'Vue panoramique'
-          ],
-          avis: [
-            {
-              utilisateur: 'Sophie M.',
-              commentaire: 'Vue exceptionnelle et service impeccable. Le petit-déjeuner en chambre était délicieux.',
-              note: 5
-            },
-            {
-              utilisateur: 'Pierre L.',
-              commentaire: 'Chambre spacieuse et très confortable. Parfait pour un séjour romantique.',
-              note: 4.5
-            }
-          ]
-        }
-      },
-      {
-        type: 'restaurant',
-        name: 'La Table d\'Or',
-        description: 'Restaurant gastronomique étoilé',
-        icon: <Restaurant />,
-        details: {
-          title: 'La Table d\'Or - Gastronomie Étoilée',
-          description: 'Restaurant gastronomique 2 étoiles Michelin offrant une cuisine créative et raffinée dans un cadre élégant avec vue sur la ville.',
-          images: [
-            'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=1200',
-            'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1200',
-            'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=1200',
-            'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1200',
-          ],
-          adresse: '20 Quai Gailleton, 69002 Lyon',
-          prix: 'Menu dégustation à partir de 150€/personne',
-          horaires: 'Du mardi au samedi, 19h30-22h30',
-          menu: [
-            'Amuse-bouches du chef',
-            'Foie gras de canard mi-cuit',
-            'Saint-Jacques snackées',
-            'Filet de bœuf Rossini',
-            'Chariot de fromages affinés',
-            'Soufflé au chocolat grand cru'
-          ],
-          avis: [
-            {
-              utilisateur: 'Marie C.',
-              commentaire: 'Une expérience gastronomique inoubliable. Chaque plat est une œuvre d\'art.',
-              note: 5
-            },
-            {
-              utilisateur: 'Jean-Paul B.',
-              commentaire: 'Service attentionné et carte des vins exceptionnelle.',
-              note: 5
-            }
-          ]
-        }
-      },
-      {
-        type: 'activity',
-        name: 'Spa Privé',
-        description: 'Massage en duo et champagne',
-        icon: <Spa />,
-        details: {
-          title: 'Spa Privé - Moment de détente en duo',
-          description: 'Profitez d\'un moment de détente absolue avec notre forfait spa privatif incluant massage en duo, accès au jacuzzi et coupe de champagne.',
-          images: [
-            'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=1200',
-            'https://images.unsplash.com/photo-1531112357080-a5eb0f6c0744?q=80&w=1200',
-            'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=1200',
-            'https://images.unsplash.com/photo-1482275548304-a58859dc31b7?q=80&w=1200',
-          ],
-          adresse: '25 Rue du Spa, 69002 Lyon',
-          prix: '220€ pour 2 personnes',
-          duree: '2h30',
-          equipements: [
-            'Peignoirs et chaussons fournis',
-            'Produits de soin haut de gamme',
-            'Jacuzzi privatif',
-            'Espace détente',
-            'Champagne et mignardises'
-          ],
-          avis: [
-            {
-              utilisateur: 'Emma R.',
-              commentaire: 'Moment magique en couple. Les masseurs sont très professionnels.',
-              note: 5
-            },
-            {
-              utilisateur: 'Thomas D.',
-              commentaire: 'Cadre sublime et prestations haut de gamme. À refaire !',
-              note: 4.5
-            }
-          ]
-        }
-      }
-    ],
-    price: 199,
-    duration: '24h',
-    groupSize: '2 personnes',
-    tags: ['Couples', 'Romantique', 'Soirée'],
-    date: '22 mars 2025'
-  },
-  {
-    id: 2,
-    type: 'couples',
-    title: 'Week-end Cocooning',
-    description: 'Détente et bien-être pour un moment à deux inoubliable.',
-    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop',
-    steps: [
-      {
-        type: 'hotel',
-        name: 'Spa Resort & Hotel',
-        description: 'Chambre Deluxe avec jacuzzi privatif',
-        icon: <Hotel />,
-        details: {
-          title: 'Chambre Deluxe Spa Resort',
-          description: 'Plongez dans un cocon de douceur avec notre chambre Deluxe équipée d\'un jacuzzi privatif. Un espace de 35m² pensé pour votre confort absolu.',
-          images: [
-            'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1200',
-            'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?q=80&w=1200',
-            'https://images.unsplash.com/photo-1584132915807-fd1f5fbc078f?q=80&w=1200',
-            'https://images.unsplash.com/photo-1571896349842-33c89424de2d?q=80&w=1200',
-          ],
-          adresse: '45 Avenue du Bien-être, 69006 Lyon',
-          prix: '280€ / nuit',
-          equipements: [
-            'Jacuzzi privatif',
-            'Lit Queen-size',
-            'Room service 24/7',
-            'Accès spa inclus',
-            'Peignoirs et chaussons',
-            'Machine Nespresso',
-            'Smart TV',
-            'Minibar premium'
-          ],
-          avis: [
-            {
-              utilisateur: 'Julie R.',
-              commentaire: 'Le jacuzzi privatif est fantastique ! Parfait pour un week-end en amoureux.',
-              note: 5
-            },
-            {
-              utilisateur: 'Marc D.',
-              commentaire: 'Chambre spacieuse et très bien équipée. Le petit déjeuner en chambre était excellent.',
-              note: 4.5
-            }
-          ]
-        }
-      },
-      {
-        type: 'activity',
-        name: 'Massage Duo Signature',
-        description: 'Rituel spa de 2h avec accès aux installations',
-        icon: <Spa />,
-        details: {
-          title: 'Rituel Signature en Duo',
-          description: 'Un voyage sensoriel de 2h comprenant un massage relaxant aux huiles essentielles, suivi d\'un accès aux installations spa (sauna, hammam, piscine).',
-          images: [
-            'https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?q=80&w=1200',
-            'https://images.unsplash.com/photo-1613796537803-99baa1446b81?q=80&w=1200',
-            'https://images.unsplash.com/photo-1575429198097-0414ec08e8cd?q=80&w=1200',
-            'https://images.unsplash.com/photo-1629196914168-3a2652305f60?q=80&w=1200',
-          ],
-          adresse: '45 Avenue du Bien-être, 69006 Lyon',
-          prix: '190€ pour 2 personnes',
-          duree: '2h de soin + 2h d\'accès spa',
-          equipements: [
-            'Massage personnalisé',
-            'Huiles essentielles bio',
-            'Accès spa complet',
-            'Tisanerie détox',
-            'Espace détente'
-          ],
-          avis: [
-            {
-              utilisateur: 'Sarah B.',
-              commentaire: 'Une expérience exceptionnelle, les masseurs sont très professionnels.',
-              note: 5
-            },
-            {
-              utilisateur: 'Laurent M.',
-              commentaire: 'Moment de détente parfait, installations haut de gamme.',
-              note: 5
-            }
-          ]
-        }
-      },
-      {
-        type: 'restaurant',
-        name: 'Le Jardin Secret',
-        description: 'Dîner aux chandelles dans un cadre intimiste',
-        icon: <Restaurant />,
-        details: {
-          title: 'Le Jardin Secret - Restaurant Intimiste',
-          description: 'Une parenthèse gastronomique dans un écrin de verdure, où la cuisine française contemporaine se marie aux saveurs du monde.',
-          images: [
-            '/images/restaurants/jardin-secret/salle.jpg',
-            '/images/restaurants/jardin-secret/terrasse.jpg',
-            '/images/restaurants/jardin-secret/plat1.jpg',
-            '/images/restaurants/jardin-secret/dessert.jpg',
-          ],
-          adresse: '12 Rue des Jardins, 69006 Lyon',
-          prix: 'Menu découverte à 85€/personne',
-          horaires: 'Du mercredi au dimanche, 19h00-22h30',
-          menu: [
-            'Amuse-bouche du moment',
-            'Carpaccio de Saint-Jacques aux agrumes',
-            'Filet de bœuf aux morilles',
-            'Assiette de fromages affinés',
-            'Dessert signature au chocolat'
-          ],
-          avis: [
-            {
-              utilisateur: 'Claire P.',
-              commentaire: 'Cadre magnifique et cuisine raffinée. Service très attentionné.',
-              note: 5
-            },
-            {
-              utilisateur: 'Antoine G.',
-              commentaire: 'Une soirée parfaite, le menu découverte est une vraie réussite.',
-              note: 4.5
-            }
-          ]
-        }
-      }
-    ],
-    price: 279,
-    duration: '24h',
-    groupSize: '2 personnes',
-    tags: ['Couples', 'Week-end', 'Bien-être'],
-    date: '22-23 mars 2025'
-  },
-  {
-    id: 3,
-    type: 'groups',
-    title: 'Aventure Urbaine',
-    description: 'Une journée de découvertes et de défis entre amis.',
-    image: 'https://images.unsplash.com/photo-1539635278303-d4002c07eae3?q=80&w=1200&auto=format&fit=crop',
-    steps: [
-      {
-        type: 'hotel',
-        name: 'Boutique Hôtel des Arts',
-        description: 'Junior Suite avec terrasse privée',
-        icon: <Hotel />,
-        details: {
-          title: 'Junior Suite - Boutique Hôtel des Arts',
-          description: 'Séjournez dans notre Junior Suite de 40m² avec terrasse privée donnant sur la vieille ville. Un espace élégant où art contemporain et confort moderne se rencontrent.',
-          images: [
-            'https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=1200',
-            'https://images.unsplash.com/photo-1560185007-5f0bb1866cab?q=80&w=1200',
-            'https://images.unsplash.com/photo-1560448204-603b3fc33ddc?q=80&w=1200',
-            'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?q=80&w=1200',
-          ],
-          adresse: '8 Rue des Artistes, 69001 Lyon',
-          prix: '320€ / nuit',
-          equipements: [
-            'Terrasse privée 15m²',
-            'Lit King-size',
-            'Œuvres d\'art originales',
-            'Station d\'accueil iPad',
-            'Machine à café Nespresso',
-            'Minibar gratuit',
-            'Room service 24/7'
-          ],
-          avis: [
-            {
-              utilisateur: 'Philippe M.',
-              commentaire: 'Décoration sublime et vue imprenable depuis la terrasse. Un vrai coup de cœur !',
-              note: 5
-            },
-            {
-              utilisateur: 'Isabelle D.',
-              commentaire: 'Le petit-déjeuner sur la terrasse était magique. Personnel aux petits soins.',
-              note: 4.5
-            }
-          ]
-        }
-      },
-      {
-        type: 'activity',
-        name: 'Visite Privée Musée',
-        description: 'Guide personnel et coupe de champagne',
-        icon: <Museum />,
-        details: {
-          title: 'Visite Privée du Musée des Beaux-Arts',
-          description: 'Découvrez les trésors du musée en compagnie d\'un guide expert. Profitez d\'un accès privilégié avant l\'ouverture au public, suivi d\'une dégustation de champagne.',
-          images: [
-            'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?q=80&w=1200',
-            'https://images.unsplash.com/photo-1518998053901-5348d3961a04?q=80&w=1200',
-            'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?q=80&w=1200',
-            'https://images.unsplash.com/photo-1482275548304-a58859dc31b7?q=80&w=1200',
-          ],
-          adresse: '20 Place des Terreaux, 69001 Lyon',
-          prix: '75€ par personne',
-          duree: '2h30',
-          equipements: [
-            'Guide expert dédié',
-            'Audioguide multilingue',
-            'Coupe de champagne',
-            'Catalogue d\'exposition',
-            'Accès prioritaire'
-          ],
-          avis: [
-            {
-              utilisateur: 'François R.',
-              commentaire: 'Une visite passionnante ! Notre guide était intarissable sur l\'histoire de l\'art.',
-              note: 5
-            },
-            {
-              utilisateur: 'Marie-Anne P.',
-              commentaire: 'Moment privilégié avant l\'ouverture, très appréciable pour les photos.',
-              note: 5
-            }
-          ]
-        }
-      },
-      {
-        type: 'restaurant',
-        name: 'L\'Atelier Gourmand',
-        description: 'Cours de cuisine en duo avec le chef',
-        icon: <Restaurant />,
-        details: {
-          title: 'L\'Atelier Gourmand - Expérience Culinaire',
-          description: 'Participez à un cours de cuisine unique avec notre chef étoilé, suivi d\'un repas dégustation des plats préparés accompagnés des vins sélectionnés par notre sommelier.',
-          images: [
-            'https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=1200',
-            'https://images.unsplash.com/photo-1605522561233-768ad7a8fabf?q=80&w=1200',
-            'https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?q=80&w=1200',
-            'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1200',
-          ],
-          adresse: '15 Rue de la Gastronomie, 69002 Lyon',
-          prix: '180€ par personne',
-          duree: '4h (cours + déjeuner)',
-          horaires: 'Sessions à 10h et 16h',
-          equipements: [
-            'Tablier offert',
-            'Fiches recettes',
-            'Dégustation de vins',
-            'Certificat de participation'
-          ],
-          menu: [
-            'Mise en bouche surprise',
-            'Entrée au choix parmi 3',
-            'Plat signature du chef',
-            'Dessert à réaliser soi-même'
-          ],
-          avis: [
-            {
-              utilisateur: 'Julien B.',
-              commentaire: 'Une expérience unique ! Le chef partage ses secrets avec passion.',
-              note: 5
-            },
-            {
-              utilisateur: 'Sophie V.',
-              commentaire: 'Excellent moment d\'apprentissage dans la bonne humeur.',
-              note: 4.5
-            }
-          ]
-        }
-      }
-    ],
-    price: 149,
-    duration: '24h',
-    groupSize: '4 à 8 personnes',
-    tags: ['Groupes', 'Culture', 'Aventure'],
-    date: '22 mars 2025'
-  },
-  {
-    id: 4,
-    type: 'groups',
-    title: 'Culture & Gastronomie',
-    description: 'Une expérience culturelle et gustative unique.',
-    image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=1200&auto=format&fit=crop',
-    steps: [
-      {
-        type: 'hotel',
-        name: 'Boutique Hôtel des Arts',
-        description: 'Junior Suite avec terrasse privée',
-        icon: <Hotel />,
-        details: {
-          title: 'Junior Suite - Boutique Hôtel des Arts',
-          description: 'Séjournez dans notre Junior Suite de 40m² avec terrasse privée donnant sur la vieille ville. Un espace élégant où art contemporain et confort moderne se rencontrent.',
-          images: [
-            'https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=1200',
-            'https://images.unsplash.com/photo-1560185007-5f0bb1866cab?q=80&w=1200',
-            'https://images.unsplash.com/photo-1560448204-603b3fc33ddc?q=80&w=1200',
-            'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?q=80&w=1200',
-          ],
-          adresse: '8 Rue des Artistes, 69001 Lyon',
-          prix: '320€ / nuit',
-          equipements: [
-            'Terrasse privée 15m²',
-            'Lit King-size',
-            'Œuvres d\'art originales',
-            'Station d\'accueil iPad',
-            'Machine à café Nespresso',
-            'Minibar gratuit',
-            'Room service 24/7'
-          ],
-          avis: [
-            {
-              utilisateur: 'Philippe M.',
-              commentaire: 'Décoration sublime et vue imprenable depuis la terrasse. Un vrai coup de cœur !',
-              note: 5
-            },
-            {
-              utilisateur: 'Isabelle D.',
-              commentaire: 'Le petit-déjeuner sur la terrasse était magique. Personnel aux petits soins.',
-              note: 4.5
-            }
-          ]
-        }
-      },
-      {
-        type: 'activity',
-        name: 'Visite Privée Musée',
-        description: 'Guide personnel et coupe de champagne',
-        icon: <Museum />,
-        details: {
-          title: 'Visite Privée du Musée des Beaux-Arts',
-          description: 'Découvrez les trésors du musée en compagnie d\'un guide expert. Profitez d\'un accès privilégié avant l\'ouverture au public, suivi d\'une dégustation de champagne.',
-          images: [
-            'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?q=80&w=1200',
-            'https://images.unsplash.com/photo-1518998053901-5348d3961a04?q=80&w=1200',
-            'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?q=80&w=1200',
-            'https://images.unsplash.com/photo-1482275548304-a58859dc31b7?q=80&w=1200',
-          ],
-          adresse: '20 Place des Terreaux, 69001 Lyon',
-          prix: '75€ par personne',
-          duree: '2h30',
-          equipements: [
-            'Guide expert dédié',
-            'Audioguide multilingue',
-            'Coupe de champagne',
-            'Catalogue d\'exposition',
-            'Accès prioritaire'
-          ],
-          avis: [
-            {
-              utilisateur: 'François R.',
-              commentaire: 'Une visite passionnante ! Notre guide était intarissable sur l\'histoire de l\'art.',
-              note: 5
-            },
-            {
-              utilisateur: 'Marie-Anne P.',
-              commentaire: 'Moment privilégié avant l\'ouverture, très appréciable pour les photos.',
-              note: 5
-            }
-          ]
-        }
-      },
-      {
-        type: 'restaurant',
-        name: 'L\'Atelier Gourmand',
-        description: 'Cours de cuisine en duo avec le chef',
-        icon: <Restaurant />,
-        details: {
-          title: 'L\'Atelier Gourmand - Expérience Culinaire',
-          description: 'Participez à un cours de cuisine unique avec notre chef étoilé, suivi d\'un repas dégustation des plats préparés accompagnés des vins sélectionnés par notre sommelier.',
-          images: [
-            'https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=1200',
-            'https://images.unsplash.com/photo-1605522561233-768ad7a8fabf?q=80&w=1200',
-            'https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?q=80&w=1200',
-            'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1200',
-          ],
-          adresse: '15 Rue de la Gastronomie, 69002 Lyon',
-          prix: '180€ par personne',
-          duree: '4h (cours + déjeuner)',
-          horaires: 'Sessions à 10h et 16h',
-          equipements: [
-            'Tablier offert',
-            'Fiches recettes',
-            'Dégustation de vins',
-            'Certificat de participation'
-          ],
-          menu: [
-            'Mise en bouche surprise',
-            'Entrée au choix parmi 3',
-            'Plat signature du chef',
-            'Dessert à réaliser soi-même'
-          ],
-          avis: [
-            {
-              utilisateur: 'Julien B.',
-              commentaire: 'Une expérience unique ! Le chef partage ses secrets avec passion.',
-              note: 5
-            },
-            {
-              utilisateur: 'Sophie V.',
-              commentaire: 'Excellent moment d\'apprentissage dans la bonne humeur.',
-              note: 4.5
-            }
-          ]
-        }
-      }
-    ],
-    price: 199,
-    duration: '24h',
-    groupSize: '4 à 8 personnes',
-    tags: ['Groupes', 'Culture', 'Gastronomie'],
-    date: '22-23 mars 2025'
-  }
-];
 
 const cardVariants = {
   hover: {
@@ -630,16 +100,44 @@ const cardVariants = {
 };
 
 const Itineraries: React.FC = () => {
+  const [itineraries, setItineraries] = useState<Itinerary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<ItineraryType | 'all'>('all');
   const [selectedItinerary, setSelectedItinerary] = useState<Itinerary | null>(null);
-  const [favorites, setFavorites] = useState<number[]>([]);
+  const [favorites, setFavorites] = useState<{ [key: number]: boolean }>({});
   const [selectedStep, setSelectedStep] = useState<ItineraryStep | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState<{[key: number]: string}>({});
+  const [timeRemaining, setTimeRemaining] = useState<{[key: number]: {
+    days: string;
+    hours: string;
+    minutes: string;
+    seconds: string;
+    status: string;
+  }}>({});
   const navigate = useNavigate();
   const [faviconPosition, setFaviconPosition] = useState({ x: -500, y: -600 });
   const sectionRef = useRef<HTMLDivElement>(null);
   const { currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Charger les itinéraires au montage du composant
+  useEffect(() => {
+    const loadItineraries = async () => {
+      try {
+        setLoading(true);
+        const data = await getHomeItineraries();
+        setItineraries(data);
+        setError(null);
+      } catch (err) {
+        console.error('Erreur lors du chargement des itinéraires:', err);
+        setError('Erreur lors du chargement des itinéraires');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadItineraries();
+  }, []);
 
   const filteredItineraries = selectedType === 'all' 
     ? itineraries 
@@ -668,7 +166,7 @@ const Itineraries: React.FC = () => {
             }
           }
           
-          setFavorites(favIds);
+          setFavorites(favIds.reduce((acc, id) => ({ ...acc, [id]: isFavorite }), {}));
         } catch (error) {
           console.error('Erreur lors du chargement des favoris:', error);
         } finally {
@@ -678,7 +176,7 @@ const Itineraries: React.FC = () => {
         // Si l'utilisateur n'est pas connecté, charger depuis localStorage
         const storedFavorites = localStorage.getItem('favorites');
         if (storedFavorites) {
-          setFavorites(JSON.parse(storedFavorites));
+          setFavorites(JSON.parse(storedFavorites).reduce((acc, id) => ({ ...acc, [id]: true }), {}));
         }
       }
     };
@@ -691,22 +189,23 @@ const Itineraries: React.FC = () => {
     try {
       if (!currentUser) {
         // Si l'utilisateur n'est pas connecté, utiliser localStorage
-        const newFavorites = favorites.includes(itineraryId)
-          ? favorites.filter(id => id !== itineraryId)
-          : [...favorites, itineraryId];
+        const newFavorites = {
+          ...favorites,
+          [itineraryId]: !favorites[itineraryId]
+        };
         
         setFavorites(newFavorites);
-        localStorage.setItem('favorites', JSON.stringify(newFavorites));
+        localStorage.setItem('favorites', JSON.stringify(Object.keys(newFavorites).filter(id => newFavorites[id])));
         return;
       }
       
       const itinerary = itineraries.find(item => item.id === itineraryId);
       if (!itinerary) return;
       
-      if (favorites.includes(itineraryId)) {
+      if (favorites[itineraryId]) {
         // Supprimer des favoris
         await removeFromFavorites(currentUser.uid, itineraryId);
-        setFavorites(favorites.filter(id => id !== itineraryId));
+        setFavorites({ ...favorites, [itineraryId]: false });
         
         // Jouer un son de suppression
         const audio = new Audio('/sounds/skip.mp3');
@@ -726,7 +225,7 @@ const Itineraries: React.FC = () => {
           itinerary.type,
           itinerary.tags
         );
-        setFavorites([...favorites, itineraryId]);
+        setFavorites({ ...favorites, [itineraryId]: true });
         
         // Jouer un son d'ajout
         const audio = new Audio('/sounds/like.mp3');
@@ -738,56 +237,83 @@ const Itineraries: React.FC = () => {
     }
   };
 
-  // Calculer le temps restant jusqu'au 15 mars à 00:00:00
+  // Calculer le temps restant pour chaque itinéraire
   const calculateTimeRemaining = useCallback(() => {
-    const newTimeRemaining: {[key: number]: string} = {};
-    
-    // Date cible: 15 mars 2025 à 00:00:00
-    const targetDate = new Date(2025, 2, 15, 0, 0, 0); // Mois commence à 0, donc 2 = mars
+    const newTimeRemaining: {[key: number]: {
+      days: string;
+      hours: string;
+      minutes: string;
+      seconds: string;
+      status: string;
+    }} = {};
     const now = new Date();
     
-    // Calculer la différence en millisecondes
-    const difference = targetDate.getTime() - now.getTime();
-    
-    // Si la date cible est dépassée
-    if (difference <= 0) {
       itineraries.forEach(itinerary => {
-        newTimeRemaining[itinerary.id] = "Réservations terminées";
-      });
-    } else {
-      // Calculer jours, heures, minutes, secondes
-      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+      if (!itinerary.displayStartDate || !itinerary.displayEndDate) {
+        newTimeRemaining[itinerary.id] = {
+          days: "00",
+          hours: "00",
+          minutes: "00",
+          seconds: "00",
+          status: "Dates non définies"
+        };
+        return;
+      }
+
+      const startDate = new Date(itinerary.displayStartDate);
+      const endDate = new Date(itinerary.displayEndDate);
       
-      // Formater avec des zéros pour les valeurs à un chiffre
-      const formattedHours = hours < 10 ? `0${hours}` : hours;
-      const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
-      const formattedSeconds = seconds < 10 ? `0${seconds}` : seconds;
-      
-      // Appliquer le même compte à rebours pour tous les itinéraires
-      itineraries.forEach(itinerary => {
-        newTimeRemaining[itinerary.id] = `${days}j ${formattedHours}h:${formattedMinutes}m:${formattedSeconds}s`;
-      });
-    }
+      // Si la date de fin est dépassée
+      if (now > endDate) {
+        newTimeRemaining[itinerary.id] = {
+          days: "00",
+          hours: "00",
+          minutes: "00",
+          seconds: "00",
+          status: "Réservations terminées"
+        };
+      }
+      // Si la date de début n'est pas encore atteinte
+      else if (now < startDate) {
+        const difference = startDate.getTime() - now.getTime();
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000).toString().padStart(2, '0');
+        
+        newTimeRemaining[itinerary.id] = {
+          days,
+          hours,
+          minutes,
+          seconds,
+          status: "début"
+        };
+      }
+      // Si on est dans la période d'affichage
+      else {
+        const difference = endDate.getTime() - now.getTime();
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000).toString().padStart(2, '0');
+        
+        newTimeRemaining[itinerary.id] = {
+          days,
+          hours,
+          minutes,
+          seconds,
+          status: "fin"
+        };
+      }
+    });
     
     setTimeRemaining(newTimeRemaining);
-  }, []);
+  }, [itineraries]);
 
-  // Mettre à jour le décompte chaque seconde
+  // Mettre à jour le compteur toutes les secondes
   useEffect(() => {
-    // Calculer le temps restant immédiatement au chargement
-    calculateTimeRemaining();
-    
-    // Mettre à jour le temps restant toutes les secondes
-    const timer = setInterval(() => {
-      calculateTimeRemaining();
-    }, 1000);
-    
-    return () => {
-      clearInterval(timer);
-    };
+    const timer = setInterval(calculateTimeRemaining, 1000);
+    return () => clearInterval(timer);
   }, [calculateTimeRemaining]);
 
   // Ajuster la position du favicon en fonction du contenu
@@ -809,6 +335,22 @@ const Itineraries: React.FC = () => {
     
     return () => clearTimeout(timer);
   }, [selectedType, filteredItineraries]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -925,7 +467,7 @@ const Itineraries: React.FC = () => {
                 <Typography variant="body1" component="div" sx={{ mb: 0.5, fontWeight: 'bold' }}>
                   Fin des réservations:
                 </Typography>
-                {Object.keys(timeRemaining).length > 0 && !timeRemaining[1]?.includes("terminées") ? (
+                {Object.keys(timeRemaining).length > 0 && timeRemaining[1] && !timeRemaining[1].status?.includes("terminées") ? (
                   <Box sx={{ 
                     display: 'flex', 
                     alignItems: 'center',
@@ -954,7 +496,7 @@ const Itineraries: React.FC = () => {
                           color: 'white',
                         }}
                       >
-                        {timeRemaining[1]?.split(' ')[0].replace('j', '')}
+                        {timeRemaining[1].days}
                       </Typography>
                       <Typography variant="caption" sx={{ mt: 0.5 }}>jours</Typography>
                     </Box>
@@ -964,15 +506,14 @@ const Itineraries: React.FC = () => {
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      mx: 1,
-                      position: 'relative'
+                      mx: 1
                     }}>
                       <Box
-                        key={`hour-${timeRemaining[1]?.split(' ')[1]?.split(':')[0]?.replace('h', '')}`}
                         component={motion.div}
-                        initial={{ y: -5, opacity: 0 }}
+                        key={`hours-${timeRemaining[1].hours}`}
+                        initial={{ y: -20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        transition={{ duration: 0.3 }}
                         sx={{ 
                           fontWeight: 'bold',
                           minWidth: '2.5rem',
@@ -982,23 +523,11 @@ const Itineraries: React.FC = () => {
                           px: 1,
                           py: 0.5,
                           fontSize: '1.5rem',
-                          boxShadow: '0 0 5px rgba(245, 158, 63, 0.4)',
-                          letterSpacing: '1px',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
                         }}
                       >
-                        {timeRemaining[1]?.split(' ')[1]?.split(':')[0]?.replace('h', '') || '00'}
+                        {timeRemaining[1].hours}
                       </Box>
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          mt: 0.5,
-                          fontWeight: 'bold',
-                          color: '#F59E3F'
-                        }}
-                      >
-                        h
-                      </Typography>
+                      <Typography variant="caption" sx={{ mt: 0.5 }}>h</Typography>
                     </Box>
                     
                     {/* Minutes */}
@@ -1006,15 +535,14 @@ const Itineraries: React.FC = () => {
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      mx: 1,
-                      position: 'relative'
+                      mx: 1
                     }}>
                       <Box
-                        key={`min-${timeRemaining[1]?.split(':')[1]?.replace('m', '')}`}
                         component={motion.div}
-                        initial={{ y: -10, opacity: 0 }}
+                        key={`minutes-${timeRemaining[1].minutes}`}
+                        initial={{ y: -20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
-                        transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
+                        transition={{ duration: 0.3 }}
                         sx={{ 
                           fontWeight: 'bold',
                           minWidth: '2.5rem',
@@ -1024,23 +552,11 @@ const Itineraries: React.FC = () => {
                           px: 1,
                           py: 0.5,
                           fontSize: '1.5rem',
-                          boxShadow: '0 0 8px rgba(245, 158, 63, 0.5)',
-                          letterSpacing: '1px',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
                         }}
                       >
-                        {timeRemaining[1]?.split(':')[1]?.replace('m', '') || '00'}
+                        {timeRemaining[1].minutes}
                       </Box>
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          mt: 0.5,
-                          fontWeight: 'bold',
-                          color: '#F59E3F'
-                        }}
-                      >
-                        min
-                      </Typography>
+                      <Typography variant="caption" sx={{ mt: 0.5 }}>min</Typography>
                     </Box>
                     
                     {/* Secondes */}
@@ -1048,60 +564,36 @@ const Itineraries: React.FC = () => {
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      ml: 1,
-                      position: 'relative'
+                      ml: 1
                     }}>
                       <AnimatePresence mode="wait">
                         <motion.div
-                          key={`sec-${timeRemaining[1]?.split(':')[2]?.replace('s', '')}`}
+                          key={`seconds-${timeRemaining[1].seconds}`}
                           initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ 
-                            opacity: 1, 
-                            scale: 1,
-                            boxShadow: '0 0 15px rgba(247, 74, 161, 0.7)'
-                          }}
+                          animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.8 }}
                           transition={{ duration: 0.2 }}
                         >
-                          <Box
-                            sx={{ 
+                          <Box sx={{ 
                               fontWeight: 'bold',
                               minWidth: '2.5rem',
-                              height: '2.5rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
                               textAlign: 'center',
                               background: 'linear-gradient(to bottom, rgba(247, 74, 161, 0.8), rgba(247, 74, 161, 0.5))',
                               borderRadius: '4px',
+                            px: 1,
+                            py: 0.5,
                               fontSize: '1.5rem',
-                              color: 'white',
-                              boxShadow: '0 0 15px rgba(247, 74, 161, 0.7)',
-                              letterSpacing: '1px',
-                              border: '1px solid rgba(255, 255, 255, 0.3)',
-                              position: 'relative',
-                              overflow: 'hidden'
-                            }}
-                          >
-                            {timeRemaining[1]?.split(':')[2]?.replace('s', '') || '00'}
+                          }}>
+                            {timeRemaining[1].seconds}
                           </Box>
                         </motion.div>
                       </AnimatePresence>
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          mt: 0.5, 
-                          fontWeight: 'bold',
-                          color: '#F74AA1'
-                        }}
-                      >
-                        sec
-                      </Typography>
+                      <Typography variant="caption" sx={{ mt: 0.5 }}>sec</Typography>
                     </Box>
                   </Box>
                 ) : (
                   <Typography variant="body1" component="span" sx={{ ml: 1, fontWeight: 'bold' }}>
-                    {timeRemaining[1] || 'Calcul en cours...'}
+                    {timeRemaining[1]?.status || 'Calcul en cours...'}
                   </Typography>
                 )}
               </Box>
@@ -1202,6 +694,7 @@ const Itineraries: React.FC = () => {
                       borderRadius: '16px',
                       overflow: 'hidden',
                       transition: 'all 0.3s ease-in-out',
+                      height: '100%',
                       '&:hover': {
                         transform: 'translateY(-8px)',
                         boxShadow: '0 12px 24px rgba(255, 214, 198, 0.2)',
@@ -1232,7 +725,7 @@ const Itineraries: React.FC = () => {
                           '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
                         }}
                       >
-                        {favorites.includes(itinerary.id) ? (
+                        {favorites[itinerary.id] ? (
                           <Favorite sx={{ color: '#F74AA1' }} />
                         ) : (
                           <FavoriteBorder sx={{ color: 'white' }} />
@@ -1350,7 +843,19 @@ const Itineraries: React.FC = () => {
                       flexDirection: 'column',
                       height: 'auto',
                     }}>
-                      <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+                      <Typography 
+                        variant="h5" 
+                        gutterBottom 
+                        sx={{ 
+                          fontWeight: 'bold',
+                          height: '3.6em',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                        }}
+                      >
                         {itinerary.title}
                       </Typography>
                       <Typography 
@@ -1358,9 +863,10 @@ const Itineraries: React.FC = () => {
                         paragraph
                         sx={{ 
                           minHeight: '48px',
+                          height: '4.5em',
                           overflow: 'hidden',
                           display: '-webkit-box',
-                          WebkitLineClamp: 2,
+                          WebkitLineClamp: 3,
                           WebkitBoxOrient: 'vertical',
                           mb: 2,
                           fontSize: '0.95rem',
@@ -1415,10 +921,21 @@ const Itineraries: React.FC = () => {
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                               }}
                             >
-                              {step.icon}
+                              {step.type === 'hotel' && <Hotel sx={{ color: 'white' }} />}
+                              {step.type === 'restaurant' && <Restaurant sx={{ color: 'white' }} />}
+                              {step.type === 'activity' && <Spa sx={{ color: 'white' }} />}
                             </Box>
                             <Box sx={{ flexGrow: 1 }}>
-                              <Typography variant="body2" color="text.primary" sx={{ fontWeight: 'bold' }}>
+                              <Typography 
+                                variant="body2" 
+                                color="text.primary" 
+                                sx={{ 
+                                  fontWeight: 'bold',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
                                 {step.name}
                               </Typography>
                               <Typography 

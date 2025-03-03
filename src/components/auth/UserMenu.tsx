@@ -19,7 +19,8 @@ import {
   AdminPanelSettings as AdminIcon,
   Favorite as FavoriteIcon,
   ShoppingBag as ShoppingBagIcon,
-  Star as StarIcon
+  Star as StarIcon,
+  ExploreOutlined as ExploreIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfileTab } from '../../contexts/ProfileTabContext';
@@ -71,7 +72,7 @@ const UserMenu: React.FC = () => {
   
   const handleCustomExperiences = () => {
     handleClose();
-    navigate('/experiences');
+    navigate('/custom-experiences');
   };
   
   // Obtenir les initiales de l'utilisateur pour l'avatar
@@ -195,9 +196,9 @@ const UserMenu: React.FC = () => {
         
         <MenuItem onClick={handleCustomExperiences}>
           <ListItemIcon>
-            <StarIcon fontSize="small" />
+            <ExploreIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Mes expériences</ListItemText>
+          <ListItemText>Mes expériences personnalisées</ListItemText>
         </MenuItem>
         
         <Divider />

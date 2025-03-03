@@ -14,39 +14,118 @@ import {
   CardContent,
   Chip,
   Divider,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
 } from '@mui/material';
 import {
-  ExpandMore,
   CheckCircle,
   Cancel,
   Pending,
   Schedule,
-  AttachMoney,
-  AccessTime,
-  Group,
-  LocalActivity,
-  Restaurant,
-  Hotel
+  Sort,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserCustomExperiences, CustomExperience } from '../../firebase/itineraryService';
-import { format } from 'date-fns';
+import { customExperienceService } from '../../firebase/customExperienceService';
+import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 
+const formatBudget = (budget: string): string => {
+  switch (budget) {
+    case 'economic':
+      return 'Économique';
+    case 'premium':
+      return 'Premium';
+    default:
+      return budget;
+  }
+};
+
+const formatActivityType = (type: string): string => {
+  const typeMap: { [key: string]: string } = {
+    outdoor: 'Plein air',
+    indoor: 'Intérieur',
+    water: 'Nautique',
+    adrenaline: 'Sensations fortes',
+    culture: 'Culture',
+  };
+  return typeMap[type] || type;
+};
+
+const formatCuisineType = (type: string): string => {
+  const typeMap: { [key: string]: string } = {
+    gastronomy: 'Gastronomique',
+    world: 'Cuisine du monde',
+    wine: 'Vin & dégustation',
+    local: 'Cuisine locale',
+    trendy: 'Tendance',
+  };
+  return typeMap[type] || type;
+};
+
+const formatIntensity = (intensity: string): string => {
+  const intensityMap: { [key: string]: string } = {
+    low: 'Faible',
+    moderate: 'Modérée',
+    high: 'Élevée',
+  };
+  return intensityMap[intensity] || intensity;
+};
+
+const formatAmbiance = (ambiance: string): string => {
+  const ambianceMap: { [key: string]: string } = {
+    cosy: 'Cosy',
+    romantic: 'Romantique',
+    festive: 'Festive',
+    family: 'Familiale',
+  };
+  return ambianceMap[ambiance] || ambiance;
+};
+
+const formatAccommodationType = (type: string): string => {
+  const typeMap: { [key: string]: string } = {
+    'city-center': 'Hôtel en centre-ville',
+    'garden': 'Hôtel avec jardin',
+    'atypical': 'Hébergement atypique',
+    'spa': 'Hôtel avec spa',
+    'luxury': 'Hôtel de luxe',
+  };
+  return typeMap[type] || type;
+};
+
+const formatStyle = (style: string): string => {
+  const styleMap: { [key: string]: string } = {
+    'modern': 'Design Moderne',
+    'traditional': 'Charme Traditionnel',
+  };
+  return styleMap[style] || style;
+};
+
+const formatDate = (dateStr: string): string => {
+  try {
+    return format(parseISO(dateStr), 'dd MMMM yyyy', { locale: fr });
+  } catch (e) {
+    return dateStr;
+  }
+};
+
 const UserCustomExperiences: React.FC = () => {
   const { currentUser } = useAuth();
-  const [customExperiences, setCustomExperiences] = useState<CustomExperience[]>([]);
+  const [customExperiences, setCustomExperiences] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const sortExperiences = (experiences: any[], order: 'asc' | 'desc') => {
+    return [...experiences].sort((a, b) => {
+      try {
+        const dateA = a?.dateAndConstraints?.date ? new Date(a.dateAndConstraints.date).getTime() : 0;
+        const dateB = b?.dateAndConstraints?.date ? new Date(b.dateAndConstraints.date).getTime() : 0;
+        return order === 'asc' ? dateA - dateB : dateB - dateA;
+      } catch (error) {
+        console.warn('Erreur lors du tri des dates:', error);
+        return 0;
+      }
+    });
+  };
 
   useEffect(() => {
     const loadCustomExperiences = async () => {
@@ -56,24 +135,31 @@ const UserCustomExperiences: React.FC = () => {
       setError(null);
       
       try {
-        const userCustomExperiences = await getUserCustomExperiences(currentUser.uid);
-        setCustomExperiences(userCustomExperiences);
+        const userExperiences = await customExperienceService.getUserExperiences(currentUser);
+        // Vérification que userExperiences est un tableau non vide
+        if (Array.isArray(userExperiences) && userExperiences.length > 0) {
+          const sortedExperiences = sortExperiences(userExperiences, sortOrder);
+          setCustomExperiences(sortedExperiences);
+        } else {
+          setCustomExperiences([]);
+        }
       } catch (error) {
         console.error('Erreur lors du chargement des expériences sur mesure:', error);
         setError('Impossible de charger vos expériences sur mesure. Veuillez réessayer plus tard.');
+        setCustomExperiences([]);
       } finally {
         setLoading(false);
       }
     };
     
     loadCustomExperiences();
-  }, [currentUser]);
+  }, [currentUser, sortOrder]);
 
-  const handleAccordionChange = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
+  const handleSort = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
   };
 
-  const getStatusChip = (status: CustomExperience['status']) => {
+  const getStatusChip = (status: string) => {
     switch (status) {
       case 'pending':
         return (
@@ -103,11 +189,11 @@ const UserCustomExperiences: React.FC = () => {
             }} 
           />
         );
-      case 'ready':
+      case 'completed':
         return (
           <Chip 
             icon={<CheckCircle />} 
-            label="Prête" 
+            label="Terminé" 
             size="small"
             sx={{ 
               bgcolor: 'rgba(76, 175, 80, 0.1)', 
@@ -117,43 +203,8 @@ const UserCustomExperiences: React.FC = () => {
             }} 
           />
         );
-      case 'cancelled':
-        return (
-          <Chip 
-            icon={<Cancel />} 
-            label="Annulée" 
-            size="small"
-            sx={{ 
-              bgcolor: 'rgba(244, 67, 54, 0.1)', 
-              color: '#f44336',
-              borderColor: 'rgba(244, 67, 54, 0.3)',
-              border: '1px solid'
-            }} 
-          />
-        );
       default:
         return null;
-    }
-  };
-
-  const getStepIndex = (status: CustomExperience['status']) => {
-    switch (status) {
-      case 'pending': return 0;
-      case 'processing': return 1;
-      case 'ready': return 2;
-      case 'cancelled': return -1;
-      default: return 0;
-    }
-  };
-
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return 'N/A';
-    
-    try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return format(date, 'dd MMMM yyyy à HH:mm', { locale: fr });
-    } catch (error) {
-      return 'Date invalide';
     }
   };
 
@@ -193,9 +244,27 @@ const UserCustomExperiences: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
-        Mes expériences sur mesure ({customExperiences.length})
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Mes expériences sur mesure ({customExperiences.length})
+        </Typography>
+        <Button
+          startIcon={<Sort />}
+          onClick={handleSort}
+          variant="outlined"
+          size="small"
+          sx={{
+            borderColor: 'rgba(247, 74, 161, 0.3)',
+            color: '#F74AA1',
+            '&:hover': {
+              borderColor: '#F74AA1',
+              backgroundColor: 'rgba(247, 74, 161, 0.1)',
+            },
+          }}
+        >
+          Trier par date ({sortOrder === 'asc' ? 'Du plus ancien' : 'Du plus récent'})
+        </Button>
+      </Box>
       
       <Grid container spacing={3}>
         {customExperiences.map((experience) => (
@@ -213,238 +282,200 @@ const UserCustomExperiences: React.FC = () => {
                 border: '1px solid rgba(255, 214, 198, 0.3)',
               }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">{experience.title}</Typography>
+                  <Typography variant="h6">
+                    {experience.itineraryType === 'hotel-restaurant-activity' ? 'Week-end Complet' : 'Sortie Express'}
+                  </Typography>
                   {getStatusChip(experience.status)}
                 </Box>
                 
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Créée le {formatDate(experience.createdAt)}
+                  Créée le {experience.createdAt.toLocaleDateString('fr-FR')}
                 </Typography>
-                
-                <Stepper 
-                  activeStep={getStepIndex(experience.status)} 
-                  alternativeLabel
-                  sx={{ 
-                    mb: 3,
-                    '& .MuiStepLabel-label': {
-                      color: 'text.secondary'
-                    },
-                    '& .MuiStepLabel-completed': {
-                      color: 'primary.main'
-                    },
-                    '& .MuiStepLabel-active': {
-                      color: 'primary.main'
-                    }
-                  }}
-                >
-                  <Step>
-                    <StepLabel>Demande reçue</StepLabel>
-                  </Step>
-                  <Step>
-                    <StepLabel>En préparation</StepLabel>
-                  </Step>
-                  <Step>
-                    <StepLabel>Proposition prête</StepLabel>
-                  </Step>
-                </Stepper>
-                
+
                 <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
-                
-                <Accordion 
-                  expanded={expandedId === experience.id}
-                  onChange={() => experience.id && handleAccordionChange(experience.id)}
-                  sx={{ 
-                    background: 'rgba(15, 23, 42, 0.5)',
-                    border: '1px solid rgba(255, 214, 198, 0.2)',
-                    borderRadius: '8px !important',
-                    '&:before': {
-                      display: 'none',
-                    },
-                    '& .MuiAccordionSummary-root': {
-                      borderRadius: '8px',
-                    }
-                  }}
-                >
-                  <AccordionSummary
-                    expandIcon={<ExpandMore />}
-                    aria-controls="panel1a-content"
-                    id="panel1a-header"
-                  >
-                    <Typography>Détails de votre demande</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Typography variant="body2" paragraph>
-                      {experience.description}
+
+                {/* Hébergement - uniquement affiché si c'est un week-end complet */}
+                {experience.itineraryType === 'hotel-restaurant-activity' && experience.accommodation && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ color: '#F59E3F' }}>
+                      Hébergement
                     </Typography>
-                    
                     <Grid container spacing={2}>
-                      <Grid item xs={12} md={4}>
-                        <Card sx={{ 
-                          background: 'rgba(15, 23, 42, 0.3)',
-                          border: '1px solid rgba(255, 214, 198, 0.1)',
-                          borderRadius: '8px'
-                        }}>
-                          <CardContent>
-                            <Typography variant="subtitle2" gutterBottom>
-                              Préférences générales
-                            </Typography>
-                            <List dense>
-                              <ListItem>
-                                <ListItemIcon>
-                                  <AttachMoney sx={{ color: 'text.secondary' }} />
-                                </ListItemIcon>
-                                <ListItemText 
-                                  primary="Budget" 
-                                  secondary={experience.preferences.budget} 
-                                  primaryTypographyProps={{ color: 'text.primary' }}
-                                  secondaryTypographyProps={{ color: 'text.secondary' }}
-                                />
-                              </ListItem>
-                              <ListItem>
-                                <ListItemIcon>
-                                  <AccessTime sx={{ color: 'text.secondary' }} />
-                                </ListItemIcon>
-                                <ListItemText 
-                                  primary="Durée" 
-                                  secondary={experience.preferences.duration} 
-                                  primaryTypographyProps={{ color: 'text.primary' }}
-                                  secondaryTypographyProps={{ color: 'text.secondary' }}
-                                />
-                              </ListItem>
-                              <ListItem>
-                                <ListItemIcon>
-                                  <Group sx={{ color: 'text.secondary' }} />
-                                </ListItemIcon>
-                                <ListItemText 
-                                  primary="Taille du groupe" 
-                                  secondary={experience.preferences.groupSize} 
-                                  primaryTypographyProps={{ color: 'text.primary' }}
-                                  secondaryTypographyProps={{ color: 'text.secondary' }}
-                                />
-                              </ListItem>
-                            </List>
-                          </CardContent>
-                        </Card>
+                      <Grid item xs={12} sm={4}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Types d'hébergement :
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                          {experience.accommodation.types.map((type: string, index: number) => (
+                            <Chip
+                              key={index}
+                              label={formatAccommodationType(type)}
+                              size="small"
+                              sx={{
+                                backgroundColor: 'rgba(247, 74, 161, 0.1)',
+                                color: '#F74AA1',
+                              }}
+                            />
+                          ))}
+                        </Box>
                       </Grid>
-                      
-                      <Grid item xs={12} md={8}>
-                        <Card sx={{ 
-                          background: 'rgba(15, 23, 42, 0.3)',
-                          border: '1px solid rgba(255, 214, 198, 0.1)',
-                          borderRadius: '8px'
-                        }}>
-                          <CardContent>
-                            <Typography variant="subtitle2" gutterBottom>
-                              Préférences détaillées
-                            </Typography>
-                            
-                            <Box sx={{ mb: 2 }}>
-                              <Typography variant="body2" color="text.secondary" gutterBottom>
-                                Types d'activités:
-                              </Typography>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                {experience.preferences.activityTypes.map((activity, index) => (
-                                  <Chip 
-                                    key={index} 
-                                    label={activity} 
-                                    size="small"
-                                    icon={<LocalActivity />}
-                                    sx={{ 
-                                      bgcolor: 'rgba(99, 102, 241, 0.1)', 
-                                      color: '#6366f1',
-                                      borderColor: 'rgba(99, 102, 241, 0.3)',
-                                      border: '1px solid'
-                                    }} 
-                                  />
-                                ))}
-                              </Box>
-                            </Box>
-                            
-                            <Box sx={{ mb: 2 }}>
-                              <Typography variant="body2" color="text.secondary" gutterBottom>
-                                Préférences culinaires:
-                              </Typography>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                {experience.preferences.foodPreferences.map((food, index) => (
-                                  <Chip 
-                                    key={index} 
-                                    label={food} 
-                                    size="small"
-                                    icon={<Restaurant />}
-                                    sx={{ 
-                                      bgcolor: 'rgba(245, 158, 63, 0.1)', 
-                                      color: '#F59E3F',
-                                      borderColor: 'rgba(245, 158, 63, 0.3)',
-                                      border: '1px solid'
-                                    }} 
-                                  />
-                                ))}
-                              </Box>
-                            </Box>
-                            
-                            <Box>
-                              <Typography variant="body2" color="text.secondary" gutterBottom>
-                                Types d'hébergement:
-                              </Typography>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                {experience.preferences.accommodationTypes.map((accommodation, index) => (
-                                  <Chip 
-                                    key={index} 
-                                    label={accommodation} 
-                                    size="small"
-                                    icon={<Hotel />}
-                                    sx={{ 
-                                      bgcolor: 'rgba(247, 74, 161, 0.1)', 
-                                      color: '#F74AA1',
-                                      borderColor: 'rgba(247, 74, 161, 0.3)',
-                                      border: '1px solid'
-                                    }} 
-                                  />
-                                ))}
-                              </Box>
-                            </Box>
-                          </CardContent>
-                        </Card>
+                      <Grid item xs={12} sm={4}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Style :
+                        </Typography>
+                        <Typography>{formatStyle(experience.accommodation.style)}</Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Budget :
+                        </Typography>
+                        <Typography>{formatBudget(experience.accommodation.budget)}</Typography>
                       </Grid>
                     </Grid>
-                    
-                    {experience.status === 'ready' && experience.proposal && (
-                      <Box sx={{ mt: 3 }}>
-                        <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
-                        
-                        <Typography variant="h6" gutterBottom>
-                          Notre proposition
-                        </Typography>
-                        
-                        <Paper sx={{ 
-                          p: 3, 
-                          mt: 2,
-                          background: 'rgba(76, 175, 80, 0.05)',
-                          border: '1px solid rgba(76, 175, 80, 0.2)',
-                          borderRadius: '8px'
-                        }}>
-                          <Typography variant="body1" paragraph>
-                            {experience.proposal.description}
-                          </Typography>
-                          
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                            <Typography variant="h6" color="primary">
-                              Prix: {experience.proposal.price}€
-                            </Typography>
-                            
-                            <Button 
-                              variant="contained" 
-                              color="primary"
-                              onClick={() => window.location.href = '/booking/custom'}
-                            >
-                              Réserver cette expérience
-                            </Button>
-                          </Box>
-                        </Paper>
+                  </Box>
+                )}
+
+                {/* Restaurant */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle1" gutterBottom sx={{ color: '#F59E3F' }}>
+                    Restaurant
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Types de cuisine :
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                        {experience.restaurant?.cuisineTypes?.map((type: string, index: number) => (
+                          <Chip
+                            key={index}
+                            label={formatCuisineType(type)}
+                            size="small"
+                            sx={{
+                              backgroundColor: 'rgba(247, 74, 161, 0.1)',
+                              color: '#F74AA1',
+                            }}
+                          />
+                        ))}
                       </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Ambiance :
+                      </Typography>
+                      <Typography>{formatAmbiance(experience.restaurant?.ambiance)}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Budget :
+                      </Typography>
+                      <Typography>{formatBudget(experience.restaurant?.budget)}</Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                {/* Activité */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle1" gutterBottom sx={{ color: '#F59E3F' }}>
+                    Activité
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Type :
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                        {Array.isArray(experience.activity?.type) ? 
+                          experience.activity.type.map((type: string, index: number) => (
+                            <Chip
+                              key={index}
+                              label={formatActivityType(type)}
+                              size="small"
+                              sx={{
+                                backgroundColor: 'rgba(247, 74, 161, 0.1)',
+                                color: '#F74AA1',
+                              }}
+                            />
+                          ))
+                          : 
+                          <Typography>{formatActivityType(experience.activity?.type)}</Typography>
+                        }
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Intensité :
+                      </Typography>
+                      <Typography>{formatIntensity(experience.activity?.intensity)}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Budget :
+                      </Typography>
+                      <Typography>{formatBudget(experience.activity?.budget)}</Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                {/* Date et Lieu */}
+                <Box>
+                  <Typography variant="subtitle1" gutterBottom sx={{ color: '#F59E3F' }}>
+                    Date et Lieu
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Date :
+                      </Typography>
+                      <Typography>{formatDate(experience.dateAndConstraints?.date)}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Heure :
+                      </Typography>
+                      <Typography>{experience.dateAndConstraints?.time}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Zone :
+                      </Typography>
+                      <Typography>{experience.dateAndConstraints?.location}</Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                {/* Personnalisation */}
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle1" gutterBottom sx={{ color: '#F59E3F' }}>
+                    Personnalisation
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Type de groupe :
+                      </Typography>
+                      <Typography>
+                        {experience.personalization?.groupDynamics === 'friends' ? 'Entre amis' : 'Événement spécial'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Ambiance :
+                      </Typography>
+                      <Typography>
+                        {experience.personalization?.vibe === 'chill' ? 'Chill & Cosy' : 'Party & Fun'}
+                      </Typography>
+                    </Grid>
+                    {experience.personalization?.specificRequests && (
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Demandes spécifiques :
+                        </Typography>
+                        <Typography>{experience.personalization.specificRequests}</Typography>
+                      </Grid>
                     )}
-                  </AccordionDetails>
-                </Accordion>
+                  </Grid>
+                </Box>
               </Paper>
             </motion.div>
           </Grid>

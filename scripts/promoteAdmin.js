@@ -50,7 +50,7 @@ async function promoteToAdmin(email) {
 }
 
 // Email de l'utilisateur à promouvoir
-const email = 'romain1.leclair@gmail.com';
+const email = 'hardcore339@protonmail.com';
 
 // Exécuter la fonction
 promoteToAdmin(email)

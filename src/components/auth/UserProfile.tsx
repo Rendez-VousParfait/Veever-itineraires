@@ -30,7 +30,8 @@ import {
   Person as PersonIcon,
   Favorite,
   ShoppingBag,
-  Star
+  Star,
+  ExploreOutlined as ExploreIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfileTab } from '../../contexts/ProfileTabContext';
@@ -41,6 +42,7 @@ import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 
 import UserFavorites from './UserFavorites';
 import UserOrders from './UserOrders';
 import UserCustomExperiences from './UserCustomExperiences';
+import { useNavigate } from 'react-router-dom';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -69,6 +71,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const UserProfile: React.FC = () => {
+  const navigate = useNavigate();
   const { 
     currentUser, 
     userData, 
@@ -474,6 +477,19 @@ const UserProfile: React.FC = () => {
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 <strong>Dernière connexion:</strong> {userData ? formatDate(userData.lastLogin) : 'N/A'}
               </Typography>
+
+              <Divider sx={{ my: 2 }} />
+              
+              <Button
+                fullWidth
+                variant="contained"
+                color="primary"
+                onClick={() => navigate('/custom-experiences')}
+                startIcon={<ExploreIcon />}
+                sx={{ mt: 2 }}
+              >
+                Mes expériences personnalisées
+              </Button>
             </Box>
           </Paper>
         </Grid>

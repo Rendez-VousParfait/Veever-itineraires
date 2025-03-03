@@ -7,7 +7,7 @@ export const blogArticles: Article[] = [
     description: "Découvrez des sorties uniques pour pimenter vos week-ends ! Des activités originales qui sortent des sentiers battus pour créer des souvenirs mémorables.",
     image: "https://images.unsplash.com/photo-1603796846097-bee99e4a601f?q=80&w=1200",
     tags: ["Insolite", "Aventures"],
-    lien: "/blog/top-5-insolite"
+    lien: "/blog/top-insolite"
   },
   {
     id: 2,
@@ -23,7 +23,7 @@ export const blogArticles: Article[] = [
     description: "Prenez soin de vous et offrez-vous une parenthèse de détente dans les meilleurs établissements de la région. Massages, soins du corps et rituels relaxants.",
     image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=1200",
     tags: ["Bien-être", "Détente"],
-    lien: "/blog/guide-spas"
+    lien: "/blog/guide-spa"
   },
   {
     id: 4,

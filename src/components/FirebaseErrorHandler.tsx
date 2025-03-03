@@ -81,7 +81,11 @@ const corsErrorSolutions = [
   }
 ];
 
-const FirebaseErrorHandler: React.FC = () => {
+interface FirebaseErrorHandlerProps {
+  children: React.ReactNode;
+}
+
+const FirebaseErrorHandler: React.FC<FirebaseErrorHandlerProps> = ({ children }) => {
   const [error, setError] = useState<{type: string, message: string} | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [originalFetch, setOriginalFetch] = useState<typeof window.fetch | null>(null);
@@ -260,6 +264,7 @@ const FirebaseErrorHandler: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      {children}
     </>
   );
 };

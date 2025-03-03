@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -14,8 +14,13 @@ import {
   FormGroup,
   FormControlLabel,
   Checkbox,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import { motion } from 'framer-motion';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { customExperienceService } from '../firebase/customExperienceService';
 import VersusCard from './VersusCard';
 import SwipeCard from './SwipeCard';
 import { foodImages, activityImages } from '../assets/images';
@@ -52,8 +57,19 @@ interface FormData {
   };
 }
 
-const PersonalityForm: React.FC = () => {
+interface PersonalityFormProps {
+  mode?: 'create' | 'edit';
+}
+
+const PersonalityForm: React.FC<PersonalityFormProps> = ({ mode = 'create' }) => {
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const { id } = useParams();
   const [activeStep, setActiveStep] = useState(0);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+  const [loading, setLoading] = useState(mode === 'edit');
   const [formData, setFormData] = useState<FormData>({
     itineraryType: '',
     accommodation: {
@@ -83,6 +99,57 @@ const PersonalityForm: React.FC = () => {
     },
     preferences: {},
   });
+
+  useEffect(() => {
+    if (mode === 'edit' && id) {
+      loadExperience();
+    }
+  }, [mode, id]);
+
+  const loadExperience = async () => {
+    try {
+      setLoading(true);
+      const experiences = await customExperienceService.getUserExperiences(currentUser!);
+      const experience = experiences.find(exp => exp.id === id);
+      
+      if (!experience) {
+        setSnackbarSeverity('error');
+        setSnackbarMessage('Expérience non trouvée');
+        setOpenSnackbar(true);
+        navigate('/custom-experiences');
+        return;
+      }
+
+      if (experience.status !== 'pending') {
+        setSnackbarSeverity('error');
+        setSnackbarMessage('Seules les expériences en attente peuvent être modifiées');
+        setOpenSnackbar(true);
+        navigate('/custom-experiences');
+        return;
+      }
+
+      setFormData({
+        itineraryType: experience.itineraryType,
+        accommodation: experience.accommodation || {
+          types: [],
+          budget: '',
+          style: '',
+        },
+        restaurant: experience.restaurant,
+        activity: experience.activity,
+        dateAndConstraints: experience.dateAndConstraints,
+        personalization: experience.personalization,
+        preferences: experience.preferences || {},
+      });
+    } catch (error) {
+      console.error('Erreur lors du chargement de l\'expérience:', error);
+      setSnackbarSeverity('error');
+      setSnackbarMessage('Erreur lors du chargement de l\'expérience');
+      setOpenSnackbar(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNext = () => {
     if (activeStep === 0 && formData.itineraryType === 'restaurant-activity') {
@@ -550,9 +617,54 @@ const PersonalityForm: React.FC = () => {
     }
   };
 
-  const handleSubmit = () => {
-    console.log('Formulaire soumis:', formData);
+  const handleSubmit = async () => {
+    if (!currentUser) {
+      setSnackbarSeverity('error');
+      setSnackbarMessage('Vous devez être connecté pour soumettre une expérience');
+      setOpenSnackbar(true);
+      return;
+    }
+
+    try {
+      const experienceData = {
+        ...formData,
+        userId: currentUser.uid,
+        userEmail: currentUser.email!,
+      };
+
+      if (mode === 'edit' && id) {
+        // Mise à jour de l'expérience existante
+        await customExperienceService.updateExperience(id, experienceData);
+        setSnackbarSeverity('success');
+        setSnackbarMessage('Votre expérience a été mise à jour avec succès !');
+      } else {
+        // Création d'une nouvelle expérience
+        await customExperienceService.createCustomExperience(experienceData);
+        setSnackbarSeverity('success');
+        setSnackbarMessage('Votre expérience a été créée avec succès !');
+      }
+
+      setOpenSnackbar(true);
+      navigate('/custom-experiences');
+    } catch (error) {
+      console.error('Erreur lors de la soumission:', error);
+      setSnackbarSeverity('error');
+      setSnackbarMessage('Une erreur est survenue lors de la soumission');
+      setOpenSnackbar(true);
+    }
   };
+
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <Typography>Chargement de votre expérience...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -584,7 +696,7 @@ const PersonalityForm: React.FC = () => {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            Créez votre aventure
+            {mode === 'edit' ? 'Modifier votre aventure' : 'Créer votre aventure'}
           </Typography>
           <Typography 
             variant="subtitle1" 
@@ -618,34 +730,46 @@ const PersonalityForm: React.FC = () => {
                 {renderCurrentStep()}
               </motion.div>
 
-              <Stack direction="row" spacing={2} sx={{ mt: 4, justifyContent: 'flex-end' }}>
+              <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
                 <Button
-                  onClick={handleBack}
                   disabled={activeStep === 0}
-                  variant="outlined"
+                  onClick={handleBack}
+                  sx={{ mr: 1 }}
                 >
                   Retour
                 </Button>
-                {activeStep === getSteps().length - 1 ? (
-                  <Button
-                    onClick={handleSubmit}
-                    variant="contained"
-                    disabled={isNextButtonDisabled()}
-                  >
-                    Créer mon itinéraire
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleNext}
-                    variant="contained"
-                    disabled={isNextButtonDisabled()}
-                  >
-                    Continuer
-                  </Button>
-                )}
-              </Stack>
+                <Button
+                  variant="contained"
+                  onClick={activeStep === getSteps().length - 1 ? handleSubmit : handleNext}
+                  disabled={isNextButtonDisabled()}
+                  sx={{
+                    background: 'linear-gradient(45deg, #F59E3F, #F74AA1)',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #F59E3F, #F74AA1)',
+                      opacity: 0.9,
+                    },
+                  }}
+                >
+                  {activeStep === getSteps().length - 1 ? 'Soumettre' : 'Suivant'}
+                </Button>
+              </Box>
             </CardContent>
           </Card>
+
+          <Snackbar
+            open={openSnackbar}
+            autoHideDuration={6000}
+            onClose={handleCloseSnackbar}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          >
+            <Alert
+              onClose={handleCloseSnackbar}
+              severity={snackbarSeverity}
+              sx={{ width: '100%' }}
+            >
+              {snackbarMessage}
+            </Alert>
+          </Snackbar>
         </motion.div>
       </Container>
     </Box>
