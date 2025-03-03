@@ -13,7 +13,6 @@ import MobileMenu from './components/MobileMenu'
 import BookingPage from './components/BookingPage'
 import { theme } from './theme'
 import BlogSection from './components/BlogSection'
-import { blogArticles } from './data/blogArticles'
 import TopInsolite from './components/blog/TopInsolite'
 import MeilleursRooftops from './components/blog/MeilleursRooftops'
 import GuideSpa from './components/blog/GuideSpa'
@@ -39,6 +38,7 @@ import FirebaseErrorHandler from './components/FirebaseErrorHandler'
 import NotFound from './components/NotFound'
 import AdminCustomExperiences from './components/admin/AdminCustomExperiences'
 import ItineraryDetail from './components/ItineraryDetail'
+import BlogManagement from './components/admin/BlogManagement'
 
 // Composant pour la page d'accueil
 const HomePage = () => (
@@ -50,7 +50,7 @@ const HomePage = () => (
       <Itineraries />
       <PersonalityForm />
       <SurpriseMe />
-      <BlogSection articles={blogArticles} />
+      <BlogSection />
       <Testimonials />
       <FAQ />
     </main>
@@ -253,6 +253,13 @@ const AdminNav = () => {
           Gestion des partenaires
         </Button>
         <Button
+          variant={location.pathname === '/admin/blog' ? 'contained' : 'outlined'}
+          component="a"
+          href="/admin/blog"
+        >
+          Gestion du blog
+        </Button>
+        <Button
           variant={location.pathname === '/admin/experiences' ? 'contained' : 'outlined'}
           component="a"
           href="/admin/experiences"
@@ -354,6 +361,12 @@ function App() {
                     <ProtectedRoute requireAdmin>
                       <AdminNav />
                       <PartnerManagement />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/blog" element={
+                    <ProtectedRoute requireAdmin>
+                      <AdminNav />
+                      <BlogManagement />
                     </ProtectedRoute>
                   } />
                   <Route path="/admin/experiences" element={

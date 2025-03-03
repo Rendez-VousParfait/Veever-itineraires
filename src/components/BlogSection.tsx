@@ -9,40 +9,78 @@ import {
   CardMedia, 
   CardContent,
   Button,
-  Grid
+  Grid,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link as RouterLink } from 'react-router-dom';
+import { BlogArticle, getAllArticles } from '../firebase/blogService';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
-export interface Article {
-  id: number;
-  titre: string;
-  description: string;
-  image: string;
-  tags: string[];
-  lien: string;
-}
-
-interface BlogSectionProps {
-  articles: Article[];
-}
-
-const BlogSection: React.FC<BlogSectionProps> = ({ articles }) => {
+const BlogSection: React.FC = () => {
+  const [articles, setArticles] = useState<BlogArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [filteredArticles, setFilteredArticles] = useState<Article[]>(articles);
+  const [filteredArticles, setFilteredArticles] = useState<BlogArticle[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
-  const [expandedArticle, setExpandedArticle] = useState<number | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
-  // Extraire tous les tags uniques des articles
   useEffect(() => {
-    const tags = Array.from(new Set(articles.flatMap(article => article.tags)));
-    setAllTags(tags);
-  }, [articles]);
+    const checkFirebaseConnection = async () => {
+      try {
+        console.log('Vérification de la connexion Firebase...');
+        const testCollection = collection(db, 'articles');
+        await getDocs(testCollection);
+        console.log('Connexion Firebase OK');
+        setDebugInfo(prev => prev + '\nConnexion Firebase OK');
+      } catch (err) {
+        console.error('Erreur de connexion Firebase:', err);
+        setDebugInfo(prev => prev + '\nErreur de connexion Firebase: ' + JSON.stringify(err));
+        setError('Erreur de connexion à la base de données');
+      }
+    };
 
-  // Filtrer les articles en fonction du tag sélectionné
+    checkFirebaseConnection();
+  }, []);
+
   useEffect(() => {
+    const loadArticles = async () => {
+      try {
+        console.log('Début du chargement des articles...');
+        setDebugInfo(prev => prev + '\nDébut du chargement des articles...');
+        
+        const articlesData = await getAllArticles();
+        console.log('Articles récupérés:', articlesData);
+        setDebugInfo(prev => prev + '\nArticles récupérés: ' + JSON.stringify(articlesData));
+        
+        if (articlesData.length === 0) {
+          setDebugInfo(prev => prev + '\nAucun article trouvé dans la base de données');
+        }
+        
+        setArticles(articlesData);
+        const tags = Array.from(new Set(articlesData.flatMap(article => article.tags)));
+        setAllTags(tags);
+      } catch (err) {
+        console.error('Erreur détaillée lors du chargement des articles:', err);
+        setDebugInfo(prev => prev + '\nErreur de chargement: ' + JSON.stringify(err));
+        setError('Erreur lors du chargement des articles');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadArticles();
+  }, []);
+
+  useEffect(() => {
+    console.log('Articles mis à jour:', articles);
     if (selectedTag) {
-      setFilteredArticles(articles.filter(article => article.tags.includes(selectedTag)));
+      const filtered = articles.filter(article => article.tags.includes(selectedTag));
+      console.log('Articles filtrés par tag:', filtered);
+      setFilteredArticles(filtered);
     } else {
       setFilteredArticles(articles);
     }
@@ -52,9 +90,59 @@ const BlogSection: React.FC<BlogSectionProps> = ({ articles }) => {
     setSelectedTag(selectedTag === tag ? null : tag);
   };
 
-  const toggleExpandArticle = (id: number) => {
-    setExpandedArticle(expandedArticle === id ? null : id);
-  };
+  if (loading) {
+    return (
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          minHeight: '400px',
+          background: '#10192c',
+          gap: 2
+        }}
+      >
+        <CircularProgress />
+        <Typography variant="body2" color="text.secondary">
+          Chargement des articles...
+        </Typography>
+        {import.meta.env.DEV && (
+          <Alert severity="info" sx={{ mt: 2, maxWidth: '600px' }}>
+            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {debugInfo}
+            </pre>
+          </Alert>
+        )}
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          minHeight: '400px',
+          background: '#10192c',
+          color: 'error.main',
+          gap: 2
+        }}
+      >
+        <Typography variant="h6">{error}</Typography>
+        {import.meta.env.DEV && (
+          <Alert severity="error" sx={{ mt: 2, maxWidth: '600px' }}>
+            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {debugInfo}
+            </pre>
+          </Alert>
+        )}
+      </Box>
+    );
+  }
 
   return (
     <Box 
@@ -141,7 +229,7 @@ const BlogSection: React.FC<BlogSectionProps> = ({ articles }) => {
             ))}
           </Stack>
 
-          {/* Grid standard au lieu de Masonry */}
+          {/* Grid des articles */}
           <Grid container spacing={4}>
             <AnimatePresence>
               {filteredArticles.map((article) => (
@@ -263,6 +351,8 @@ const BlogSection: React.FC<BlogSectionProps> = ({ articles }) => {
                           <Button
                             component={RouterLink}
                             to={article.lien}
+                            variant="outlined"
+                            fullWidth
                             sx={{
                               borderColor: 'rgba(255, 214, 198, 0.3)',
                               color: '#fff',
@@ -282,27 +372,6 @@ const BlogSection: React.FC<BlogSectionProps> = ({ articles }) => {
               ))}
             </AnimatePresence>
           </Grid>
-
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
-            <Button
-              variant="outlined"
-              sx={{
-                borderColor: 'rgba(255, 214, 198, 0.3)',
-                color: '#fff',
-                px: 4,
-                py: 1.5,
-                borderRadius: '12px',
-                '&:hover': {
-                  borderColor: 'rgba(255, 214, 198, 0.5)',
-                  background: 'rgba(255, 214, 198, 0.1)',
-                  transform: 'translateY(-5px)',
-                },
-                transition: 'all 0.3s ease',
-              }}
-            >
-              Voir tous les articles
-            </Button>
-          </Box>
         </motion.div>
       </Container>
     </Box>
